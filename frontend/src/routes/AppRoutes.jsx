@@ -2,12 +2,14 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 
-// Vistas temporales (Placeholder) para probar el enrutamiento
-const DashboardPage = () => <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>;
-const OrdenesPage = () => <h2 className="text-2xl font-bold text-slate-800">Órdenes de Servicio</h2>;
-const ClientesPage = () => <h2 className="text-2xl font-bold text-slate-800">Gestión de Clientes</h2>;
-const TecnicosPage = () => <h2 className="text-2xl font-bold text-slate-800">Gestión de Técnicos</h2>;
-const ReportesPage = () => <h2 className="text-2xl font-bold text-slate-800">Logs y Reportes</h2>;
+// Vistas
+import DashboardPage from '../pages/Dashboard';
+
+// Modales / Placeholders
+const OrdenesPage = () => <h2 className="text-xl font-bold text-slate-800">Órdenes de Servicio</h2>;
+const ClientesPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Clientes</h2>;
+const TecnicosPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Técnicos</h2>;
+const ReportesPage = () => <h2 className="text-xl font-bold text-slate-800">Logs y Reportes</h2>;
 
 const AppRoutes = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
     return (
@@ -21,9 +23,14 @@ const AppRoutes = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
                     />
                 }
             >
-                <Route path="/" element={<Navigate to="/ordenes" replace />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                <Route path="/dashboard" element={<DashboardPage />} />
+                {/* Dashboard renderizado con componentes reutilizables */}
+                <Route
+                    path="/dashboard"
+                    element={<DashboardPage onOpenNewOrderModal={onOpenNewOrderModal} />}
+                />
+
                 <Route path="/ordenes" element={<OrdenesPage />} />
                 <Route path="/clientes" element={<ClientesPage />} />
                 <Route path="/tecnicos" element={<TecnicosPage />} />
