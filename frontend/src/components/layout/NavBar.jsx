@@ -8,6 +8,7 @@ import {
     Plus,
     Wrench as BuildIcon
 } from 'lucide-react';
+import Button from '../common/Button';
 
 const NavBar = ({ currentRole, onOpenNewOrderModal }) => {
     const menuItems = [
@@ -38,13 +39,14 @@ const NavBar = ({ currentRole, onOpenNewOrderModal }) => {
             {/* BOTON Crear Orden */}
             {currentRole === 'ADMIN_RECEPCION' && (
                 <div className="px-4 mb-6">
-                    <button
+                    <Button
+                        variant="primary"
+                        size="lg"
                         onClick={onOpenNewOrderModal}
-                        className="w-full flex items-center justify-center space-x-2 bg-[#97C719] text-white py-2 px-4 rounded hover:bg-[#86b116] transition-colors text-xs font-semibold shadow-[0px_1px_3px_rgba(15,23,42,0.08)] cursor-pointer"
                     >
                         <Plus size={16} />
                         <span>Nueva Orden</span>
-                    </button>
+                    </Button>
                 </div>
             )}
 
