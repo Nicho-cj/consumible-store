@@ -1,22 +1,19 @@
-const express = require('express');
-const cors = require('cors')
-const app = express();
-const port = 3000;
+import express, { json } from 'express'
+import { createMovieRouter } from './routes/movies.js'
+import { corsMiddleware } from './middlewares/cors.js'
+import 'dotenv/config'
 
-app.use(express.json());
-app.use(express.cors())
+export const createApp = ({ movieModel }) => {
+  const app = express()
+  app.use(json())
+  app.use(corsMiddleware())
+  app.disable('x-powered-by')
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
+  app.use('/movies', createMovieRouter({ movieModel }))
 
-app.use((req, res) => {
-  res.status(404).send('Error: Ruta no conocida');
-});
+  const PORT = process.env.PORT ?? 1234
 
-// para hacer peticiones HTTP es app.[tipo de petición]
-// entiendase laS tipos de peticiones GET, POST, PUT, DELETE, PATHC
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+  app.listen(PORT, () => {
+    console.log(`server listening on port http://localhost:${PORT}`)
+  })
+}
