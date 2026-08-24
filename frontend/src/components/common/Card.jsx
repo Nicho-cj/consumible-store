@@ -1,5 +1,3 @@
-import React from 'react';
-
 // Contenedor principal de tarjeta
 export const Card = ({ children, className = '', onClick }) => {
     return (

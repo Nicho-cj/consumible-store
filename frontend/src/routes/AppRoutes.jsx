@@ -4,9 +4,9 @@ import Layout from '../components/layout/Layout';
 // Vistas
 import DashboardPage from '../pages/DashboardPage';
 import OrdenesPage from '../pages/OrdenesPage';
+import ClientesPage from '../pages/ClientesPage';
 
 // Modales / Placeholders
-const ClientesPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Clientes</h2>;
 const TecnicosPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Técnicos</h2>;
 const ReportesPage = () => <h2 className="text-xl font-bold text-slate-800">Logs y Reportes</h2>;
 
