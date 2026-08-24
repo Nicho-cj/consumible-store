@@ -1,12 +1,11 @@
-import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 
 // Vistas
-import DashboardPage from '../pages/Dashboard';
+import DashboardPage from '../pages/DashboardPage';
+import OrdenesPage from '../pages/OrdenesPage';
 
 // Modales / Placeholders
-const OrdenesPage = () => <h2 className="text-xl font-bold text-slate-800">Órdenes de Servicio</h2>;
 const ClientesPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Clientes</h2>;
 const TecnicosPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Técnicos</h2>;
 const ReportesPage = () => <h2 className="text-xl font-bold text-slate-800">Logs y Reportes</h2>;
