@@ -5,7 +5,7 @@ import Layout from '../components/layout/Layout';
 import DashboardPage from '../pages/DashboardPage';
 import OrdenesPage from '../pages/OrdenesPage';
 import ClientesPage from '../pages/ClientesPage';
-
+import EquiposPage from '../pages/EquiposPage';
 // Modales / Placeholders
 const TecnicosPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Técnicos</h2>;
 const ReportesPage = () => <h2 className="text-xl font-bold text-slate-800">Logs y Reportes</h2>;
@@ -33,6 +33,7 @@ const AppRoutes = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
                 <Route path="/ordenes" element={<OrdenesPage />} />
                 <Route path="/clientes" element={<ClientesPage />} />
                 <Route path="/tecnicos" element={<TecnicosPage />} />
+                <Route path="/equipos" element={<EquiposPage />} />
                 <Route path="/reportes" element={<ReportesPage />} />
 
                 <Route path="*" element={<h2 className="text-xl text-red-500">Página no encontrada</h2>} />

@@ -6,6 +6,7 @@ import {
     Wrench,
     FileSpreadsheet,
     Plus,
+    Printer,
     Wrench as BuildIcon
 } from 'lucide-react';
 import Button from '../common/Button';
@@ -15,6 +16,7 @@ const NavBar = ({ currentRole, onOpenNewOrderModal }) => {
         { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN_RECEPCION'] },
         { path: '/ordenes', label: 'Órdenes de Servicio', icon: ClipboardList, roles: ['ADMIN_RECEPCION', 'TECNICO'] },
         { path: '/clientes', label: 'Clientes', icon: Users, roles: ['ADMIN_RECEPCION'] },
+        { path: '/equipos', label: 'Equipos', icon: Printer, roles: ['ADMIN_RECEPCION'] },
         { path: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['ADMIN_RECEPCION'] },
         { path: '/reportes', label: 'Log / Reportes', icon: FileSpreadsheet, roles: ['ADMIN_RECEPCION'] },
     ];
