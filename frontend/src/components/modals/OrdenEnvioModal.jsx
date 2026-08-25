@@ -29,11 +29,13 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
         observaciones: order?.equipo?.observaciones || order?.observaciones || 'Ninguna'
     };
 
-    // Generar el Código de Barras ajustado para 55mm x 40mm
+    // Generar el Código de Barras ajustado para 55mm x 40mm basado en el SERIAL del equipo
+    const barcodeValue = orderData.serial && orderData.serial !== 'S/N-000000' ? orderData.serial : (orderData.serial || orderData.id);
+
     useEffect(() => {
-        if (isOpen && barcodeRef.current && orderData.id) {
+        if (isOpen && barcodeRef.current && barcodeValue) {
             try {
-                JsBarcode(barcodeRef.current, orderData.id, {
+                JsBarcode(barcodeRef.current, String(barcodeValue).trim(), {
                     format: 'CODE128',
                     lineColor: '#000000',
                     width: 1.2,
@@ -47,7 +49,7 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
                 console.error('Error generando código de barras:', err);
             }
         }
-    }, [isOpen, orderData.id]);
+    }, [isOpen, barcodeValue]);
 
     // Construcción del mensaje para WhatsApp
     const buildWhatsAppMessage = () => {
@@ -63,7 +65,12 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
 
     const handleSendWhatsApp = () => {
         const message = buildWhatsAppMessage();
-        const cleanPhone = orderData.telefono.replace(/[^0-9]/g, '');
+        let cleanPhone = orderData.telefono.replace(/[^0-9]/g, '');
+
+        // Si el número empieza por 0 (ej: 04141234567), le quitamos el 0 y agregamos +58 por defecto
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '58' + cleanPhone.substring(1);
+        }
 
         const whatsappUrl = cleanPhone
             ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
@@ -144,16 +151,16 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
                         {/* Fila 2: Datos Técnicos */}
                         <div className="text-[8px] leading-tight space-y-0.5 my-auto">
                             <div className="truncate">
-                                <span className="font-bold">Técnico:{orderData.technician}</span>
+                                <span className="font-bold">Técnico: {orderData.technician}</span>
                             </div>
                             <div className="truncate">
-                                <span className="font-bold">Equipo:{orderData.equipment}</span>
+                                <span className="font-bold">Equipo: {orderData.equipment}</span>
                             </div>
                             <div className="truncate">
-                                <span className="font-bold">Serial:{orderData.serial}</span>
+                                <span className="font-bold">Serial: {orderData.serial}</span>
                             </div>
                             <div className="truncate">
-                                <span className="font-bold">Cliente:{orderData.clientName}</span>
+                                <span className="font-bold">Cliente: {orderData.clientName}</span>
                             </div>
                         </div>
 

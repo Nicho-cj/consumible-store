@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Button from '../common/Button';
@@ -6,8 +6,24 @@ import { Search, CheckCircle2 } from 'lucide-react';
 
 // Base de datos simulada de prueba para autocompletar
 const CLIENTES_MOCK = {
-    'V-12345678': { nombre: 'Jesús Saavedra', telefono: '0414-1234567', direccion: 'Puerto Ordaz, Bolívar' }
+    'V-12345678': { nombre: 'Jesús Saavedra', telefono: '+58 414-1234567', direccion: 'Puerto Ordaz, Bolívar' }
 };
+
+const COUNTRY_CODES = [
+    { code: '+58', country: 'VE', name: 'Venezuela (+58)' },
+    { code: '+57', country: 'CO', name: 'Colombia (+57)' },
+    { code: '+1', country: 'US/CA', name: 'USA / Canadá (+1)' },
+    { code: '+34', country: 'ES', name: 'España (+34)' },
+    { code: '+56', country: 'CL', name: 'Chile (+56)' },
+    { code: '+54', country: 'AR', name: 'Argentina (+54)' },
+    { code: '+51', country: 'PE', name: 'Perú (+51)' },
+    { code: '+593', country: 'EC', name: 'Ecuador (+593)' },
+    { code: '+507', country: 'PA', name: 'Panamá (+507)' },
+    { code: '+52', country: 'MX', name: 'México (+52)' },
+    { code: '+55', country: 'BR', name: 'Brasil (+55)' },
+    { code: '+591', country: 'BO', name: 'Bolivia (+591)' },
+    { code: '+598', country: 'UY', name: 'Uruguay (+598)' },
+];
 
 const EQUIPOS_MOCK = {
     'SER-990011': { marca: 'HP', modelo: 'LaserJet Pro M404dn' }
@@ -17,6 +33,7 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     // Estado Datos del Cliente
     const [cedulaRif, setCedulaRif] = useState('');
     const [nombre, setNombre] = useState('');
+    const [codigoPais, setCodigoPais] = useState('+58');
     const [telefono, setTelefono] = useState('');
     const [direccion, setDireccion] = useState('');
     const [clienteEncontrado, setClienteEncontrado] = useState(false);
@@ -34,8 +51,23 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
         const cliente = CLIENTES_MOCK[cedulaRif.trim()];
         if (cliente) {
             setNombre(cliente.nombre);
-            setTelefono(cliente.telefono);
             setDireccion(cliente.direccion);
+
+            if (cliente.telefono) {
+                let tel = cliente.telefono.trim();
+                const matchedCode = COUNTRY_CODES.find(c => tel.startsWith(c.code));
+                if (matchedCode) {
+                    setCodigoPais(matchedCode.code);
+                    tel = tel.replace(matchedCode.code, '').trim();
+                } else {
+                    setCodigoPais('+58');
+                }
+                tel = tel.replace(/^0+/, '');
+                setTelefono(tel);
+            } else {
+                setTelefono('');
+            }
+
             setClienteEncontrado(true);
         } else {
             setClienteEncontrado(false);
@@ -54,18 +86,46 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
         }
     };
 
+    const resetForm = () => {
+        // Limpiar Datos del Cliente
+        setCedulaRif('');
+        setNombre('');
+        setCodigoPais('+58');
+        setTelefono('');
+        setDireccion('');
+        setClienteEncontrado(false);
+        // Limpiar Datos del Equipo
+        setSerial('');
+        setMarca('');
+        setModelo('');
+        setFalla('');
+        setObservaciones('');
+        setEquipoEncontrado(false);
+    };
+
+    const handleClose = () => {
+        resetForm();
+        onClose();
+    };
+
+
+
     const handleSubmit = (e) => {
         e.preventDefault();
+        const cleanTel = telefono.trim().replace(/^0+/, '');
+        const telefonoCompleto = cleanTel ? `${codigoPais} ${cleanTel}` : '';
+
         const nuevaOrden = {
-            cliente: { cedulaRif, nombre, telefono, direccion },
+            cliente: { cedulaRif, nombre, telefono: telefonoCompleto, direccion },
             equipo: { serial, marca, modelo, falla, observaciones }
         };
         onSubmit(nuevaOrden);
+        resetForm();
         onClose();
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Registrar Nueva Órden de Servicio" maxWidth="max-w-3xl">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Registrar Nueva Órden de Servicio" maxWidth="max-w-3xl">
             <form onSubmit={handleSubmit} className="space-y-6">
 
                 {/* SECCIÓN: Datos del Cliente */}
@@ -96,13 +156,42 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                             required
                         />
 
-                        <Input
-                            label="Número de Contacto"
-                            placeholder="Ej. 0414-0000000"
-                            value={telefono}
-                            onChange={(e) => setTelefono(e.target.value)}
-                            required
-                        />
+                        {/* Selector de Código de País + Teléfono */}
+                        <div className="flex flex-col gap-1 w-full">
+                            <label className="text-xs font-semibold text-slate-700">
+                                Número de Contacto (WhatsApp)
+                            </label>
+                            <div className="flex w-full">
+                                <select
+                                    value={codigoPais}
+                                    onChange={(e) => setCodigoPais(e.target.value)}
+                                    className="bg-slate-50 border border-r-0 border-[#E2E8F0] text-xs font-semibold text-slate-700 rounded-l-md px-2 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent cursor-pointer transition-all shrink-0"
+                                >
+                                    {COUNTRY_CODES.map((item) => (
+                                        <option key={item.code} value={item.code}>
+                                            {item.code} ({item.country})
+                                        </option>
+                                    ))}
+                                </select>
+                                <input
+                                    type="tel"
+                                    placeholder="Ej. 414-1234567"
+                                    value={telefono}
+                                    onChange={(e) => {
+                                        let val = e.target.value;
+                                        if (val.startsWith('0')) {
+                                            val = val.substring(1);
+                                        }
+                                        setTelefono(val);
+                                    }}
+                                    required
+                                    className="w-full bg-white border border-[#E2E8F0] text-xs text-slate-800 rounded-r-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all placeholder:text-slate-400"
+                                />
+                            </div>
+                            <span className="text-[10px] text-slate-400">
+                                Ingrese sin el cero inicial (Ej. 4141234567)
+                            </span>
+                        </div>
 
                         <Input
                             label="Dirección"
@@ -186,7 +275,7 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
 
                 {/* Acciones Finales del Formulario */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-[#E2E8F0]">
-                    <Button type="button" variant="secondary" onClick={onClose}>
+                    <Button type="button" variant="secondary" onClick={handleClose}>
                         Cancelar
                     </Button>
                     <Button type="submit" variant="primary">

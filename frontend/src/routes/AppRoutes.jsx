@@ -6,9 +6,8 @@ import DashboardPage from '../pages/DashboardPage';
 import OrdenesPage from '../pages/OrdenesPage';
 import ClientesPage from '../pages/ClientesPage';
 import EquiposPage from '../pages/EquiposPage';
-// Modales / Placeholders
-const TecnicosPage = () => <h2 className="text-xl font-bold text-slate-800">Gestión de Técnicos</h2>;
-const ReportesPage = () => <h2 className="text-xl font-bold text-slate-800">Logs y Reportes</h2>;
+import TecnicosPage from '../pages/TecnicosPage';
+import ReportesPage from '../pages/ReportesPage';
 
 const AppRoutes = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
     return (
