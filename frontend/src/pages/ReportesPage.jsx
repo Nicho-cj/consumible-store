@@ -1,37 +1,67 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import {
     DollarSign,
     CheckCircle2,
     Printer,
     Download,
     Activity,
-    UserCheck,
+    Users,
     TrendingUp,
     Database,
-    HardDriveDownload
+    HardDriveDownload,
+    Calendar,
+    Search,
+    FileText,
+    Eye,
+    Wrench,
+    FileSpreadsheet
 } from 'lucide-react';
 import Card, { MetricCard } from '../components/common/Card';
 import Table from '../components/common/Table';
 import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
 import { ORDER_STATUS } from '../utils/status';
 import { normalizeText } from '../utils/text';
 
+// Función para formatear fechas a formato DD/MM/YYYY
+const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+};
+
 const ReportesPage = () => {
+    // Referencia para react-to-print
+    const contentRef = useRef(null);
+
+    // Integración de react-to-print
+    const handlePrintReport = useReactToPrint({
+        contentRef: contentRef,
+        documentTitle: `Reporte_Liquidacion_Consumible_Store_${new Date().toISOString().slice(0, 10)}`,
+    });
+
     // Pestaña activa: 'LIQUIDACION' | 'LOGS' | 'BACKUP'
     const [activeTab, setActiveTab] = useState('LIQUIDACION');
 
-    // Filtros de Liquidación
+    // Filtros de Liquidación por Fecha de Ingreso y Técnico
     const [selectedTechnician, setSelectedTechnician] = useState('ALL');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [serviceTypeFilter, setServiceTypeFilter] = useState('ALL');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Estado del modal de Vista Previa del Reporte PDF
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     // Filtros de Logs
     const [logSearch, setLogSearch] = useState('');
     const [logModuleFilter, setLogModuleFilter] = useState('ALL');
 
-    // Mock Data de Servicios Finalizados y Liquidados (RF-12)
+    // Mock Data de Servicios Finalizados para Liquidación
     const liquidacionesData = [
         {
             id: 1,
@@ -46,8 +76,6 @@ const ReportesPage = () => {
             trabajoRealizado: 'Limpieza de cabezal y cambio de almohadillas',
             repuestosUsados: 'Almohadillas Epson L3110',
             montoTotal: 35.0,
-            porcentajeComision: 40,
-            comision: 14.0,
             estado: ORDER_STATUS.ENTREGADO
         },
         {
@@ -63,8 +91,6 @@ const ReportesPage = () => {
             trabajoRealizado: 'Reemplazo de rodillo de arrastre (Pick-up roller)',
             repuestosUsados: 'Pick-up roller HP M404',
             montoTotal: 45.0,
-            porcentajeComision: 40,
-            comision: 18.0,
             estado: ORDER_STATUS.ENTREGADO
         },
         {
@@ -80,8 +106,6 @@ const ReportesPage = () => {
             trabajoRealizado: 'Mantenimiento general de sistema continuo y purga de tintas',
             repuestosUsados: 'Ninguno',
             montoTotal: 25.0,
-            porcentajeComision: 40,
-            comision: 10.0,
             estado: ORDER_STATUS.ENTREGADO
         },
         {
@@ -97,8 +121,6 @@ const ReportesPage = () => {
             trabajoRealizado: 'Destape por ultrasonido de inyectores y calibración',
             repuestosUsados: 'Líquido destapador especializado',
             montoTotal: 50.0,
-            porcentajeComision: 40,
-            comision: 20.0,
             estado: ORDER_STATUS.ENTREGADO
         },
         {
@@ -114,10 +136,38 @@ const ReportesPage = () => {
             trabajoRealizado: 'Cambio de engranaje de fusor y limpieza de escáner',
             repuestosUsados: 'Engranaje de tracción de fusor',
             montoTotal: 65.0,
-            porcentajeComision: 40,
-            comision: 26.0,
             estado: ORDER_STATUS.ENTREGADO
         },
+        {
+            id: 6,
+            codigo: 'ORD-2026-010',
+            fechaIngreso: '2026-08-20',
+            fechaCierre: '2026-08-23',
+            tecnico: 'Eloy',
+            cliente: 'Distribuidora del Sur',
+            equipo: 'Brother DCP-T510W',
+            serial: 'SER-554433',
+            tipoServicio: 'Revisión y Reparación',
+            trabajoRealizado: 'Reemplazo de sensor de paso de papel y mantenimiento del mecanismo',
+            repuestosUsados: 'Sensor óptico de papel Brother',
+            montoTotal: 40.0,
+            estado: ORDER_STATUS.ENTREGADO
+        },
+        {
+            id: 7,
+            codigo: 'ORD-2026-012',
+            fechaIngreso: '2026-08-22',
+            fechaCierre: '2026-08-25',
+            tecnico: 'Jesús Saavedra',
+            cliente: 'Clínica Guayana',
+            equipo: 'Zebra ZD220',
+            serial: 'SER-776655',
+            tipoServicio: 'Mantenimiento Preventivo',
+            trabajoRealizado: 'Limpieza de cabezal térmico y calibración de sensor de etiquetas',
+            repuestosUsados: 'Ninguno',
+            montoTotal: 30.0,
+            estado: ORDER_STATUS.ENTREGADO
+        }
     ];
 
     // Mock Data del Log de Auditoría / Registros del Sistema (RNF-05 / RNF-06)
@@ -172,7 +222,7 @@ const ReportesPage = () => {
         },
     ];
 
-    // Configuración de Filtros para Liquidación
+    // Configuración de Filtros para Detalle de Servicios / Liquidación
     const filterFields = [
         {
             id: 'tecnico',
@@ -186,34 +236,30 @@ const ReportesPage = () => {
                 { label: 'Dario Jose Jimenez', value: 'Dario Jose Jimenez' },
                 { label: 'Domingo', value: 'Domingo' },
                 { label: 'Eloy', value: 'Eloy' },
+                { label: 'Jesús Saavedra', value: 'Jesús Saavedra' },
             ],
         },
         {
             id: 'startDate',
-            label: 'Fecha Cierre Desde',
+            label: 'Fecha Ingreso Desde',
             type: 'date',
             value: startDate,
             onChange: setStartDate,
         },
         {
             id: 'endDate',
-            label: 'Fecha Cierre Hasta',
+            label: 'Fecha Ingreso Hasta',
             type: 'date',
             value: endDate,
             onChange: setEndDate,
         },
         {
-            id: 'servicio',
-            label: 'Tipo de Servicio',
-            type: 'select',
-            value: serviceTypeFilter,
-            onChange: setServiceTypeFilter,
-            options: [
-                { label: 'Todos los Servicios', value: 'ALL' },
-                { label: 'Mantenimiento Correctivo', value: 'Mantenimiento Correctivo' },
-                { label: 'Mantenimiento Preventivo', value: 'Mantenimiento Preventivo' },
-                { label: 'Revisión y Reparación', value: 'Revisión y Reparación' },
-            ],
+            id: 'search',
+            label: 'Búsqueda Rápida',
+            type: 'text',
+            placeholder: 'Buscar por orden, cliente, equipo...',
+            value: searchQuery,
+            onChange: setSearchQuery,
         },
     ];
 
@@ -221,25 +267,62 @@ const ReportesPage = () => {
         setSelectedTechnician('ALL');
         setStartDate('');
         setEndDate('');
-        setServiceTypeFilter('ALL');
+        setSearchQuery('');
     };
 
-    // Filtrado de Liquidaciones
+    // Filtros rápidos de fecha preestablecidos
+    const handleQuickDatePreset = (preset) => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        if (preset === 'TODAY') {
+            setStartDate(todayStr);
+            setEndDate(todayStr);
+        } else if (preset === 'THIS_MONTH') {
+            setStartDate(`${yyyy}-${mm}-01`);
+            setEndDate(todayStr);
+        } else if (preset === 'LAST_30_DAYS') {
+            const past30 = new Date(today);
+            past30.setDate(today.getDate() - 30);
+            const pY = past30.getFullYear();
+            const pM = String(past30.getMonth() + 1).padStart(2, '0');
+            const pD = String(past30.getDate()).padStart(2, '0');
+            setStartDate(`${pY}-${pM}-${pD}`);
+            setEndDate(todayStr);
+        } else if (preset === 'ALL') {
+            setStartDate('');
+            setEndDate('');
+        }
+    };
+
+    // Filtrado de Liquidaciones por Fecha de Ingreso, Técnico y Búsqueda
     const filteredLiquidaciones = useMemo(() => {
         return liquidacionesData.filter((item) => {
             const matchesTecnico = selectedTechnician === 'ALL' || item.tecnico === selectedTechnician;
-            const matchesServicio = serviceTypeFilter === 'ALL' || item.tipoServicio === serviceTypeFilter;
 
-            const itemDate = new Date(item.fechaCierre);
+            // Filtro por Fecha de Ingreso
+            const itemDate = new Date(item.fechaIngreso);
             const start = startDate ? new Date(startDate) : null;
             const end = endDate ? new Date(endDate) : null;
 
             const matchesStart = !start || itemDate >= start;
             const matchesEnd = !end || itemDate <= end;
 
-            return matchesTecnico && matchesServicio && matchesStart && matchesEnd;
+            // Búsqueda por texto (orden, cliente, equipo, serial, trabajo)
+            const query = normalizeText(searchQuery);
+            const matchesSearch = !query ||
+                normalizeText(item.codigo).includes(query) ||
+                normalizeText(item.cliente).includes(query) ||
+                normalizeText(item.equipo).includes(query) ||
+                normalizeText(item.serial).includes(query) ||
+                normalizeText(item.trabajoRealizado).includes(query);
+
+            return matchesTecnico && matchesStart && matchesEnd && matchesSearch;
         });
-    }, [liquidacionesData, selectedTechnician, serviceTypeFilter, startDate, endDate]);
+    }, [liquidacionesData, selectedTechnician, startDate, endDate, searchQuery]);
 
     // Filtrado de Logs
     const filteredLogs = useMemo(() => {
@@ -257,13 +340,9 @@ const ReportesPage = () => {
         });
     }, [auditLogsData, logSearch, logModuleFilter]);
 
-    // Totales Calculados de Liquidación
+    // Totales Calculados
     const totalFacturado = useMemo(() => {
         return filteredLiquidaciones.reduce((acc, curr) => acc + curr.montoTotal, 0);
-    }, [filteredLiquidaciones]);
-
-    const totalComisiones = useMemo(() => {
-        return filteredLiquidaciones.reduce((acc, curr) => acc + curr.comision, 0);
     }, [filteredLiquidaciones]);
 
     const ticketPromedio = useMemo(() => {
@@ -281,12 +360,10 @@ const ReportesPage = () => {
                     nombre: item.tecnico,
                     servicios: 0,
                     totalCobrado: 0,
-                    totalComision: 0,
                 };
             }
             map[item.tecnico].servicios += 1;
             map[item.tecnico].totalCobrado += item.montoTotal;
-            map[item.tecnico].totalComision += item.comision;
         });
         return Object.values(map);
     }, [filteredLiquidaciones]);
@@ -296,24 +373,24 @@ const ReportesPage = () => {
         {
             key: 'codigo',
             label: 'N° Orden',
-            className: 'font-semibold text-slate-800 font-mono'
+            className: 'font-semibold text-slate-800 font-mono text-xs'
         },
         {
             key: 'tecnico',
             label: 'Técnico Responsable',
-            className: 'font-medium text-slate-700'
+            className: 'font-medium text-slate-700 text-xs'
         },
         {
             key: 'cliente',
             label: 'Cliente',
-            className: 'text-slate-600'
+            className: 'text-slate-700 text-xs font-medium'
         },
         {
             key: 'equipo',
-            label: 'Equipo / Serial',
+            label: 'Equipo y Serial',
             render: (row) => (
                 <div>
-                    <span className="font-semibold text-slate-800 block">{row.equipo}</span>
+                    <span className="font-semibold text-slate-800 block text-xs">{row.equipo}</span>
                     <span className="text-[10px] text-slate-500 font-mono">S/N: {row.serial}</span>
                 </div>
             )
@@ -321,12 +398,12 @@ const ReportesPage = () => {
         {
             key: 'trabajoRealizado',
             label: 'Trabajo Realizado',
-            className: 'max-w-xs truncate text-[11px] text-slate-600',
+            className: 'max-w-xs text-xs text-slate-600',
             render: (row) => (
-                <div title={row.trabajoRealizado} className="max-w-[220px] truncate">
-                    <span>{row.trabajoRealizado}</span>
-                    {row.repuestosUsados !== 'Ninguno' && (
-                        <span className="block text-[10px] text-amber-600 font-semibold truncate">
+                <div title={row.trabajoRealizado} className="max-w-[240px]">
+                    <span className="block text-xs leading-tight">{row.trabajoRealizado}</span>
+                    {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
+                        <span className="block text-[10px] text-amber-700 font-medium mt-0.5">
                             Repuesto: {row.repuestosUsados}
                         </span>
                     )}
@@ -334,25 +411,19 @@ const ReportesPage = () => {
             )
         },
         {
-            key: 'fechaCierre',
-            label: 'Fecha Cierre',
-            className: 'text-slate-500 font-mono text-[11px]'
+            key: 'fechaIngreso',
+            label: 'Fecha Ingreso',
+            className: 'text-slate-600 font-mono text-xs whitespace-nowrap',
+            render: (row) => formatDate(row.fechaIngreso)
         },
         {
             key: 'montoTotal',
             label: 'Monto Cobrado',
-            className: 'font-semibold text-slate-800',
-            render: (row) => `$${row.montoTotal.toFixed(2)}`
-        },
-        {
-            key: 'comision',
-            label: 'Comisión Técnico',
-            className: 'font-bold text-emerald-600',
+            className: 'font-bold text-slate-900 text-xs text-right',
             render: (row) => (
-                <div>
-                    <span>${row.comision.toFixed(2)}</span>
-                    <span className="text-[10px] text-slate-400 font-normal ml-1">({row.porcentajeComision}%)</span>
-                </div>
+                <span className="bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-md border border-emerald-200 font-mono">
+                    ${row.montoTotal.toFixed(2)}
+                </span>
             )
         },
     ];
@@ -395,7 +466,7 @@ const ReportesPage = () => {
         }
     ];
 
-    // Función para descargar backup JSON
+    // Descargar backup JSON
     const handleDownloadBackup = () => {
         const backupData = {
             fechaGeneracion: new Date().toISOString(),
@@ -414,45 +485,220 @@ const ReportesPage = () => {
         downloadAnchor.remove();
     };
 
-    const handlePrintReport = () => {
-        window.print();
-    };
+    // Componente reutilizable con la estructura formal del Reporte Imprimible
+    const ReportContent = ({ isModalView = false }) => (
+        <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-8'}`}>
+            {/* Encabezado Membretado */}
+            <div className="border-b-2 border-slate-900 pb-4 mb-4">
+                <div className="flex flex-row justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-[#97C719] rounded flex items-center justify-center text-white font-bold text-xs border border-black">
+                                CS
+                            </div>
+                            <h1 className="text-base font-black tracking-tight text-slate-900">
+                                CONSUMIBLE STORE, C.A.
+                            </h1>
+                        </div>
+                        <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                            RIF: J-40891234-5 | Soporte y Servicio Técnico Especializado
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                            C.C. Bolívar, Nivel PB, Local 12, Puerto Ordaz, Edo. Bolívar
+                        </p>
+                    </div>
+
+                    <div className="text-right text-[10px] text-slate-600 space-y-0.5 border-l border-slate-300 pl-3">
+                        <p><strong className="text-slate-800">Fecha Emisión:</strong> {new Date().toLocaleDateString('es-VE')} {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p><strong className="text-slate-800">Generado por:</strong> Administración / Recepción</p>
+                        <p><strong className="text-slate-800">Estatus:</strong> Servicios Finalizados / Cobrados</p>
+                    </div>
+                </div>
+
+                <div className="mt-3 pt-2 border-t border-slate-200 text-center">
+                    <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">
+                        Reporte de Detalles de Servicios para Liquidación
+                    </h2>
+                </div>
+            </div>
+
+            {/* Parámetros de Filtro y Resumen del Reporte */}
+            <div className="mb-4 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2 border border-slate-300 bg-slate-50 p-2.5 rounded">
+                <div>
+                    <span className="text-slate-500 block text-[10px]">Técnico:</span>
+                    <strong className="text-slate-900">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[10px]">Rango de Fecha Ingreso:</span>
+                    <strong className="text-slate-900">
+                        {startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}
+                    </strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[10px]">Total Servicios:</span>
+                    <strong className="text-slate-900">{filteredLiquidaciones.length} Registros</strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[10px]">Monto Total Cobrado:</span>
+                    <strong className="text-emerald-700 text-xs">${totalFacturado.toFixed(2)}</strong>
+                </div>
+            </div>
+
+            {/* Tabla Principal del Reporte */}
+            <table className="w-full text-left text-[11px] border-collapse border border-slate-800 mb-4">
+                <thead>
+                    <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[10px]">
+                        <th className="p-1.5 border border-slate-800 text-center w-24">N° Orden</th>
+                        <th className="p-1.5 border border-slate-800">Técnico</th>
+                        <th className="p-1.5 border border-slate-800">Cliente</th>
+                        <th className="p-1.5 border border-slate-800">Equipo y Serial</th>
+                        <th className="p-1.5 border border-slate-800">Trabajo Realizado</th>
+                        <th className="p-1.5 border border-slate-800 text-center w-24">Fecha Ingreso</th>
+                        <th className="p-1.5 border border-slate-800 text-right w-24">Monto Cobrado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {filteredLiquidaciones.length === 0 ? (
+                        <tr>
+                            <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">
+                                No se encontraron servicios en el rango de fechas seleccionado.
+                            </td>
+                        </tr>
+                    ) : (
+                        filteredLiquidaciones.map((row, idx) => (
+                            <tr key={row.id} className={`border-b border-slate-400 ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
+                                <td className="p-1.5 border border-slate-800 font-mono font-bold text-center text-slate-900">
+                                    {row.codigo}
+                                </td>
+                                <td className="p-1.5 border border-slate-800 font-medium text-slate-800">
+                                    {row.tecnico}
+                                </td>
+                                <td className="p-1.5 border border-slate-800 text-slate-800">
+                                    {row.cliente}
+                                </td>
+                                <td className="p-1.5 border border-slate-800 text-slate-800">
+                                    <div className="font-semibold">{row.equipo}</div>
+                                    <div className="text-[9px] text-slate-600 font-mono">S/N: {row.serial}</div>
+                                </td>
+                                <td className="p-1.5 border border-slate-800 text-slate-700 leading-tight">
+                                    <span>{row.trabajoRealizado}</span>
+                                    {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
+                                        <div className="text-[9px] text-amber-800 font-medium">
+                                            Repuesto: {row.repuestosUsados}
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">
+                                    {formatDate(row.fechaIngreso)}
+                                </td>
+                                <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">
+                                    ${row.montoTotal.toFixed(2)}
+                                </td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+                <tfoot>
+                    <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold">
+                        <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">
+                            Total General Cobrado ({filteredLiquidaciones.length} Servicios):
+                        </td>
+                        <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">
+                            ${totalFacturado.toFixed(2)}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            {/* Resumen por Técnico */}
+            {resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
+                <div className="mb-6 pt-2">
+                    <h3 className="text-[10px] font-bold uppercase text-slate-700 mb-1">
+                        Consolidado por Técnico en el Período
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                        {resumenPorTecnico.map((t) => (
+                            <div key={t.nombre} className="border border-slate-300 p-1.5 rounded bg-slate-50">
+                                <span className="font-bold block text-slate-800 truncate">{t.nombre}</span>
+                                <div className="flex justify-between text-slate-600 mt-0.5">
+                                    <span>{t.servicios} serv.</span>
+                                    <strong className="text-slate-900">${t.totalCobrado.toFixed(2)}</strong>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Firmas de Conformidad */}
+            <div className="grid grid-cols-2 gap-12 mt-10 pt-4 text-xs text-center border-t border-slate-300">
+                <div className="pt-2">
+                    <div className="w-48 border-t border-slate-800 mx-auto mb-1"></div>
+                    <p className="font-bold text-slate-900">Administración / Recepción</p>
+                    <p className="text-[10px] text-slate-500">Consumible Store, C.A.</p>
+                </div>
+                <div className="pt-2">
+                    <div className="w-48 border-t border-slate-800 mx-auto mb-1"></div>
+                    <p className="font-bold text-slate-900">
+                        {selectedTechnician === 'ALL' ? 'Técnico Responsable' : selectedTechnician}
+                    </p>
+                    <p className="text-[10px] text-slate-500">Conformidad de Servicios</p>
+                </div>
+            </div>
+
+            <div className="text-center text-[9px] text-slate-400 mt-6">
+                Documento administrativo para control de liquidación y servicios de taller. Consumible Store, C.A.
+            </div>
+        </div>
+    );
 
     return (
         <div className="space-y-6">
 
             {/* Encabezado Principal */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">
-                        Liquidación y Reportes Operativos
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <FileSpreadsheet className="text-[#97C719]" size={24} />
+                        Liquidación y Reportes de Servicios
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">
-                        Consolidación de servicios por técnico para efectos de pago, auditoría y respaldos
+                        Reporte de servicios finalizados por fecha de ingreso para liquidación y respaldo operativo
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Botón de Vista Previa Modal */}
                     <Button
                         variant="secondary"
+                        icon={Eye}
+                        onClick={() => setIsPreviewOpen(true)}
+                    >
+                        Vista Previa
+                    </Button>
+
+                    {/* Botón de Impresión Directa vía react-to-print */}
+                    <Button
+                        variant="primary"
                         icon={Printer}
                         onClick={handlePrintReport}
                     >
-                        Imprimir Reporte
+                        Imprimir / Guardar PDF
                     </Button>
 
+                    {/* Descargar Respaldo JSON */}
                     <Button
-                        variant="primary"
+                        variant="secondary"
                         icon={HardDriveDownload}
                         onClick={handleDownloadBackup}
                     >
-                        Descargar Respaldo
+                        Respaldo
                     </Button>
                 </div>
             </div>
 
             {/* Navegación por Pestañas */}
-            <div className="flex border-b border-slate-200 gap-6 no-print">
+            <div className="flex border-b border-slate-200 gap-6">
                 <button
                     onClick={() => setActiveTab('LIQUIDACION')}
                     className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'LIQUIDACION'
@@ -461,7 +707,7 @@ const ReportesPage = () => {
                         }`}
                 >
                     <DollarSign size={16} className={activeTab === 'LIQUIDACION' ? 'text-[#97C719]' : 'text-slate-400'} />
-                    <span>Liquidación por Técnico (RF-12)</span>
+                    <span>Detalle de Servicios para Liquidación</span>
                 </button>
 
                 <button
@@ -488,32 +734,25 @@ const ReportesPage = () => {
             </div>
 
             {/* ======================================================== */}
-            {/* PESTAÑA 1: LIQUIDACIÓN Y SERVICIOS POR TÉCNICO (RF-12) */}
+            {/* PESTAÑA 1: DETALLE DE SERVICIOS PARA LIQUIDACIÓN */}
             {/* ======================================================== */}
             {activeTab === 'LIQUIDACION' && (
                 <div className="space-y-6">
 
                     {/* Tarjetas Métricas Clave */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 no-print">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <MetricCard
-                            title="Total Facturado"
+                            title="Total Monto Cobrado"
                             value={`$${totalFacturado.toFixed(2)}`}
                             icon={DollarSign}
                             color="emerald"
                         />
 
                         <MetricCard
-                            title="Servicios Finalizados"
+                            title="Servicios en el Reporte"
                             value={filteredLiquidaciones.length.toString()}
                             icon={CheckCircle2}
                             color="blue"
-                        />
-
-                        <MetricCard
-                            title="Comisiones por Liquidar"
-                            value={`$${totalComisiones.toFixed(2)}`}
-                            icon={UserCheck}
-                            color="primary"
                         />
 
                         <MetricCard
@@ -522,57 +761,104 @@ const ReportesPage = () => {
                             icon={TrendingUp}
                             color="amber"
                         />
+
+                        <MetricCard
+                            title="Técnicos Involucrados"
+                            value={resumenPorTecnico.length.toString()}
+                            icon={Users}
+                            color="primary"
+                        />
                     </div>
 
                     {/* Barra de Filtros */}
-                    <div className="no-print">
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+                            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+                                <Calendar size={14} className="text-[#97C719]" />
+                                <span>Filtros rápidos por fecha:</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <button
+                                    onClick={() => handleQuickDatePreset('ALL')}
+                                    className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${!startDate && !endDate ? 'bg-[#97C719] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                    Todos
+                                </button>
+                                <button
+                                    onClick={() => handleQuickDatePreset('TODAY')}
+                                    className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
+                                >
+                                    Hoy
+                                </button>
+                                <button
+                                    onClick={() => handleQuickDatePreset('LAST_30_DAYS')}
+                                    className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
+                                >
+                                    Últimos 30 días
+                                </button>
+                                <button
+                                    onClick={() => handleQuickDatePreset('THIS_MONTH')}
+                                    className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
+                                >
+                                    Este Mes
+                                </button>
+                            </div>
+                        </div>
+
                         <FilterBar fields={filterFields} onReset={handleResetFilters} />
                     </div>
 
-                    {/* Resumen Individual por Técnico (Mini Cards) */}
-                    {resumenPorTecnico.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
+                    {/* Resumen Individual por Técnico */}
+                    {resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                             {resumenPorTecnico.map((tec) => (
-                                <Card key={tec.nombre} className="p-4 border-l-4 border-l-[#97C719]">
+                                <Card key={tec.nombre} className="p-3 border-l-4 border-l-[#97C719]">
                                     <div className="flex justify-between items-start">
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 text-sm">{tec.nombre}</h4>
-                                            <p className="text-[11px] text-slate-500">{tec.servicios} servicios finalizados</p>
+                                        <div className="overflow-hidden">
+                                            <h4 className="font-bold text-slate-800 text-xs truncate" title={tec.nombre}>
+                                                {tec.nombre}
+                                            </h4>
+                                            <p className="text-[10px] text-slate-500">{tec.servicios} servicio(s)</p>
                                         </div>
-                                        <span className="text-[10px] font-bold bg-[#F3F7E9] text-[#55720C] px-2 py-0.5 rounded border border-[#E2EED0]">
-                                            40% Comisión
-                                        </span>
                                     </div>
-
-                                    <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                                        <div>
-                                            <span className="text-slate-400 block text-[10px]">Facturado</span>
-                                            <span className="font-semibold text-slate-700">${tec.totalCobrado.toFixed(2)}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-slate-400 block text-[10px]">A Liquidar</span>
-                                            <span className="font-bold text-emerald-600">${tec.totalComision.toFixed(2)}</span>
-                                        </div>
+                                    <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                                        <span className="text-slate-400 text-[10px]">Cobrado:</span>
+                                        <span className="font-bold text-slate-800">${tec.totalCobrado.toFixed(2)}</span>
                                     </div>
                                 </Card>
                             ))}
                         </div>
                     )}
 
-                    {/* Tabla Principal de Detalle de Liquidación */}
+                    {/* Tabla Principal de Detalle de Servicios */}
                     <Card>
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                             <div>
-                                <h3 className="font-bold text-slate-800 text-sm">
+                                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <FileText size={16} className="text-[#97C719]" />
                                     Detalle de Servicios para Liquidación
                                 </h3>
                                 <p className="text-[11px] text-slate-500">
-                                    Consolidado de órdenes finalizadas con cálculo de montos y comisiones
+                                    {startDate || endDate ? (
+                                        <span>Filtrando por fecha de ingreso: <strong>{startDate ? formatDate(startDate) : 'Inicio'}</strong> hasta <strong>{endDate ? formatDate(endDate) : 'Fin'}</strong></span>
+                                    ) : (
+                                        'Mostrando todos los servicios finalizados registrados'
+                                    )}
                                 </p>
                             </div>
-                            <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
-                                {filteredLiquidaciones.length} Registros
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
+                                    {filteredLiquidaciones.length} Registros
+                                </span>
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    icon={Printer}
+                                    onClick={handlePrintReport}
+                                >
+                                    Imprimir Reporte
+                                </Button>
+                            </div>
                         </div>
 
                         <Table columns={liquidacionColumns} data={filteredLiquidaciones} />
@@ -588,7 +874,7 @@ const ReportesPage = () => {
                 <div className="space-y-6">
 
                     {/* Filtros de Logs */}
-                    <Card className="p-4 no-print">
+                    <Card className="p-4">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="sm:col-span-2">
                                 <label className="text-xs font-semibold text-slate-700 block mb-1">
@@ -670,7 +956,7 @@ const ReportesPage = () => {
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                                             Último Respaldo Local
                                         </span>
-                                        <p className="text-xs font-semibold text-slate-800">Hoy, 2026-08-25 (Automático)</p>
+                                        <p className="text-xs font-semibold text-slate-800">Hoy, {new Date().toLocaleDateString('es-VE')} (Automático)</p>
                                         <p className="text-[11px] text-emerald-600 font-medium">Estado: Operativo e Íntegro</p>
                                     </div>
 
@@ -700,83 +986,52 @@ const ReportesPage = () => {
             )}
 
             {/* ======================================================== */}
-            {/* HOJA DE IMPRESIÓN FORMAL DE LIQUIDACIÓN PARA TÉCNICOS */}
+            {/* MODAL DE VISTA PREVIA DEL REPORTE ANTES DE IMPRIMIR */}
             {/* ======================================================== */}
-            <div className="hidden print:block printable-report bg-white text-black p-6">
-                <div className="border-b-2 border-black pb-3 mb-4 flex justify-between items-start">
-                    <div>
-                        <h1 className="text-lg font-bold">CONSUMIBLE STORE, C.A.</h1>
-                        <p className="text-xs">Sistema de Control de Servicio Técnico - C.C. Bolívar, Puerto Ordaz</p>
-                        <h2 className="text-sm font-bold mt-2 uppercase">Reporte de Correlación y Liquidación de Servicios por Técnico (RF-12)</h2>
+            <Modal
+                isOpen={isPreviewOpen}
+                onClose={() => setIsPreviewOpen(false)}
+                title="Vista Previa de Reporte de Liquidación (PDF)"
+                maxWidth="max-w-4xl"
+            >
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center bg-slate-100 p-3 rounded-lg">
+                        <span className="text-xs text-slate-600">
+                            Verifique los datos antes de imprimir o guardar como PDF en su navegador.
+                        </span>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="primary"
+                                icon={Printer}
+                                size="sm"
+                                onClick={handlePrintReport}
+                            >
+                                Imprimir / Guardar PDF
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setIsPreviewOpen(false)}
+                            >
+                                Cerrar
+                            </Button>
+                        </div>
                     </div>
-                    <div className="text-right text-xs">
-                        <p><strong>Fecha Emisión:</strong> {new Date().toLocaleDateString('es-VE')}</p>
-                        <p><strong>Filtro Técnico:</strong> {selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</p>
+
+                    <div className="border border-slate-300 rounded-lg shadow-sm overflow-hidden bg-white">
+                        <ReportContent isModalView={true} />
                     </div>
                 </div>
+            </Modal>
 
-                <div className="mb-4 text-xs grid grid-cols-3 gap-2 border p-2 bg-slate-50">
-                    <div><strong>Total Servicios:</strong> {filteredLiquidaciones.length}</div>
-                    <div><strong>Monto Bruto Facturado:</strong> ${totalFacturado.toFixed(2)}</div>
-                    <div><strong>Total Comisión a Liquidar:</strong> ${totalComisiones.toFixed(2)}</div>
-                </div>
-
-                <table className="w-full text-left text-xs border-collapse border border-black mb-6">
-                    <thead>
-                        <tr className="bg-slate-200 border-b border-black">
-                            <th className="p-1 border border-black">N° Orden</th>
-                            <th className="p-1 border border-black">Técnico</th>
-                            <th className="p-1 border border-black">Cliente</th>
-                            <th className="p-1 border border-black">Equipo / Serial</th>
-                            <th className="p-1 border border-black">Fecha Cierre</th>
-                            <th className="p-1 border border-black">Monto Total</th>
-                            <th className="p-1 border border-black">Comisión (40%)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredLiquidaciones.map((row) => (
-                            <tr key={row.id} className="border-b border-black">
-                                <td className="p-1 border border-black font-mono">{row.codigo}</td>
-                                <td className="p-1 border border-black">{row.tecnico}</td>
-                                <td className="p-1 border border-black">{row.cliente}</td>
-                                <td className="p-1 border border-black">{row.equipo} ({row.serial})</td>
-                                <td className="p-1 border border-black">{row.fechaCierre}</td>
-                                <td className="p-1 border border-black">${row.montoTotal.toFixed(2)}</td>
-                                <td className="p-1 border border-black font-bold">${row.comision.toFixed(2)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                {/* Firmas de Conformidad de Pago */}
-                <div className="grid grid-cols-2 gap-12 mt-12 pt-6 text-xs text-center">
-                    <div className="border-t border-black pt-2">
-                        <p className="font-bold">Firma del Administrador / Recepción</p>
-                        <p className="text-[10px] text-slate-600">Consumible Store, C.A.</p>
-                    </div>
-                    <div className="border-t border-black pt-2">
-                        <p className="font-bold">Firma del Técnico (Conforme)</p>
-                        <p className="text-[10px] text-slate-600">Recepción de Pago de Comisión</p>
-                    </div>
+            {/* ======================================================== */}
+            {/* NODO OCULTO EN UI QUE REACT-TO-PRINT UTILIZA PARA IMPRIMIR */}
+            {/* ======================================================== */}
+            <div className="hidden">
+                <div ref={contentRef}>
+                    <ReportContent isModalView={false} />
                 </div>
             </div>
-
-            {/* Estilos CSS para Impresión de Reporte */}
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                @media print {
-                    .no-print {
-                        display: none !important;
-                    }
-                    body {
-                        background: white !important;
-                        color: black !important;
-                    }
-                    .printable-report {
-                        display: block !important;
-                    }
-                }
-            `}} />
 
         </div>
     );
