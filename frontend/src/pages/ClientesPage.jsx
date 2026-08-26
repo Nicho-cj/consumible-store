@@ -1,50 +1,52 @@
+import { useState } from 'react';
 import CustomerCard from '../components/common/CustomerCard';
+import Input from '../components/common/Input';
+import { Search } from 'lucide-react';
+import { mockClientes } from '../data/clientesData';
 
 const ClientesPage = () => {
-    const clientesData = [
-        {
-            id: 1,
-            nombre: 'DellAcuatica CA',
-            documento: 'J-12345678-0',
-            telefono: '(555) 442-9911',
-            estado: 'ACTIVE',
-            totalOrdenes: 3,
-        },
-        {
-            id: 2,
-            nombre: 'Nexus Corp',
-            documento: 'V-80012234-9',
-            telefono: '(555) 837-5920',
-            estado: 'ACTIVE',
-            totalOrdenes: 1,
-        },
-        {
-            id: 3,
-            nombre: 'Oak Valley Clinic',
-            documento: 'V-12345678',
-            telefono: '(555) 442-9911',
-            estado: 'IDLE',
-            totalOrdenes: 0,
-        },
-    ];
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const clientesFiltrados = mockClientes.filter((cliente) => {
+        const term = searchTerm.toLowerCase().trim();
+        const doc = (cliente.cedulaRif || cliente.documento || '').toLowerCase();
+        return cliente.nombre.toLowerCase().includes(term) || doc.includes(term);
+    });
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-xl font-bold text-slate-800">Panel de Clientes</h2>
-                <p className="text-xs text-slate-500 mt-1">Gestion de Clientes y su historial.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-xl font-bold text-slate-800">Panel de Clientes</h2>
+                    <p className="text-xs text-slate-500 mt-1">Gestión de clientes e historial de órdenes.</p>
+                </div>
+
+                <div className="w-full sm:w-72">
+                    <Input
+                        placeholder="Buscar cliente o documento..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        icon={Search}
+                    />
+                </div>
             </div>
 
-            {/* Grid de Tarjetas de Clientes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {clientesData.map((cliente) => (
-                    <CustomerCard
-                        key={cliente.id}
-                        customer={cliente}
-                        onClick={() => alert(`Seleccionado: ${cliente.nombre}`)}
-                    />
-                ))}
-            </div>
+            {/* Grid de Tarjetas */}
+            {clientesFiltrados.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {clientesFiltrados.map((cliente) => (
+                        <CustomerCard
+                            key={cliente.id}
+                            customer={cliente}
+                            onClick={() => alert(`Cliente seleccionado: ${cliente.nombre}`)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-12 border border-dashed border-slate-200 rounded-lg">
+                    <p className="text-xs text-slate-500">No se encontraron clientes que coincidan con la búsqueda.</p>
+                </div>
+            )}
         </div>
     );
 };

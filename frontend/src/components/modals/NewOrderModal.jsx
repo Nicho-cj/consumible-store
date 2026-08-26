@@ -3,11 +3,8 @@ import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { Search, CheckCircle2 } from 'lucide-react';
-
-// Base de datos simulada de prueba para autocompletar
-const CLIENTES_MOCK = {
-    'V-12345678': { nombre: 'Jesús Saavedra', telefono: '+58 414-1234567', direccion: 'Puerto Ordaz, Bolívar' }
-};
+import { CLIENTES_MOCK, EQUIPOS_MOCK } from '../../data/modalData';
+import { sanitizeDocumentNumber } from '../../utils/text';
 
 const COUNTRY_CODES = [
     { code: '+58', country: 'VE', name: 'Venezuela (+58)' },
@@ -25,13 +22,10 @@ const COUNTRY_CODES = [
     { code: '+598', country: 'UY', name: 'Uruguay (+598)' },
 ];
 
-const EQUIPOS_MOCK = {
-    'SER-990011': { marca: 'HP', modelo: 'LaserJet Pro M404dn' }
-};
-
 const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     // Estado Datos del Cliente
-    const [cedulaRif, setCedulaRif] = useState('');
+    const [tipoDoc, setTipoDoc] = useState('V');
+    const [numeroDoc, setNumeroDoc] = useState('');
     const [nombre, setNombre] = useState('');
     const [codigoPais, setCodigoPais] = useState('+58');
     const [telefono, setTelefono] = useState('');
@@ -46,9 +40,18 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     const [observaciones, setObservaciones] = useState('');
     const [equipoEncontrado, setEquipoEncontrado] = useState(false);
 
-    // Buscar Cliente por Cedula/RIF
+
+    // Sanitización en tiempo real al tipear el documento
+    const handleNumeroDocChange = (e) => {
+        setNumeroDoc(sanitizeDocumentNumber(e.target.value));
+    };
+
+    // Buscar Cliente por Cédula/RIF
+    // Buscar Cliente por Cédula/RIF
     const handleSearchCliente = () => {
-        const cliente = CLIENTES_MOCK[cedulaRif.trim()];
+        const fullCedula = `${tipoDoc}-${numeroDoc}`.trim();
+        const cliente = CLIENTES_MOCK[fullCedula];
+
         if (cliente) {
             setNombre(cliente.nombre);
             setDireccion(cliente.direccion);
@@ -87,14 +90,13 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     };
 
     const resetForm = () => {
-        // Limpiar Datos del Cliente
-        setCedulaRif('');
+        setTipoDoc('V');
+        setNumeroDoc('');
         setNombre('');
         setCodigoPais('+58');
         setTelefono('');
         setDireccion('');
         setClienteEncontrado(false);
-        // Limpiar Datos del Equipo
         setSerial('');
         setMarca('');
         setModelo('');
@@ -108,15 +110,14 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
         onClose();
     };
 
-
-
     const handleSubmit = (e) => {
         e.preventDefault();
         const cleanTel = telefono.trim().replace(/^0+/, '');
         const telefonoCompleto = cleanTel ? `${codigoPais} ${cleanTel}` : '';
+        const cedulaRifCompleta = `${tipoDoc}-${numeroDoc}`.trim();
 
         const nuevaOrden = {
-            cliente: { cedulaRif, nombre, telefono: telefonoCompleto, direccion },
+            cliente: { cedulaRif: cedulaRifCompleta, nombre, telefono: telefonoCompleto, direccion },
             equipo: { serial, marca, modelo, falla, observaciones }
         };
         onSubmit(nuevaOrden);
@@ -135,17 +136,40 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                     </h4>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex gap-2 items-end">
-                            <Input
-                                label="Cédula / RIF"
-                                placeholder="Ej. V-12345678"
-                                value={cedulaRif}
-                                onChange={(e) => setCedulaRif(e.target.value)}
-                                required
-                            />
-                            <Button type="button" variant="secondary" icon={Search} onClick={handleSearchCliente}>
-                                Buscar
-                            </Button>
+                        {/* Selector de Tipo de Documento + Cédula/RIF */}
+                        <div className="flex flex-col gap-1 w-full">
+                            <label className="text-xs font-semibold text-slate-700">
+                                Cédula / RIF
+                            </label>
+                            <div className="flex w-full items-center">
+                                <select
+                                    value={tipoDoc}
+                                    onChange={(e) => setTipoDoc(e.target.value)}
+                                    className="bg-slate-50 border border-r-0 border-[#E2E8F0] text-xs font-bold text-slate-700 rounded-l-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent cursor-pointer transition-all shrink-0"
+                                >
+                                    <option value="V">V-</option>
+                                    <option value="J">J-</option>
+                                    <option value="G">G-</option>
+                                    <option value="E">E-</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    placeholder="12345678"
+                                    value={numeroDoc}
+                                    onChange={handleNumeroDocChange}
+                                    required
+                                    className="w-full bg-white border border-r-0 border-[#E2E8F0] text-xs text-slate-800 px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all placeholder:text-slate-400 font-mono uppercase"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    icon={Search}
+                                    onClick={handleSearchCliente}
+                                    className="rounded-l-none rounded-r-md"
+                                >
+                                    Buscar
+                                </Button>
+                            </div>
                         </div>
 
                         <Input

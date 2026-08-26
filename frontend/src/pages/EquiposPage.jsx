@@ -7,78 +7,10 @@ import Input from '../components/common/Input';
 import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
 import { normalizeText } from '../utils/text';
-
-// Datos MOCK iniciales con historial y contadores
-const EQUIPOS_DATA = [
-    {
-        id: 1,
-        serial: 'SER-KY2040-001',
-        tipo: 'Multifuncional / Fotocopiadora',
-        marca: 'Kyocera',
-        modelo: 'ECOSYS M2040dn',
-        descripcion: 'Dúplex, Red, Bandeja 250h. Tóner TK-1175.',
-        cliente: 'DellAcuatica CA',
-        contadorBN: 45210,
-        contadorColor: 0,
-        historial: [
-            {
-                orden: 'ORD-2026-088',
-                fecha: '2026-08-15',
-                tipo: 'Correctivo',
-                tecnico: 'J. Medina',
-                diagnostico: 'Atasco en bandeja 1. Limpieza y cambio de rodillo de arrastre.',
-                repuestos: 'Pickup Roller Kit',
-                contador: 45210
-            },
-            {
-                orden: 'ORD-2026-012',
-                fecha: '2026-03-02',
-                tipo: 'Preventivo',
-                tecnico: 'R. Saavedra',
-                diagnostico: 'Mantenimiento preventivo por ciclo 30K y recarga.',
-                repuestos: 'Tóner TK-1175',
-                contador: 30150
-            }
-        ]
-    },
-    {
-        id: 2,
-        serial: 'SER-HP404-998',
-        tipo: 'Impresora Láser',
-        marca: 'HP',
-        modelo: 'LaserJet Pro M404dn',
-        descripcion: 'Láser monocromática departamental.',
-        cliente: 'Nexus Corp',
-        contadorBN: 18450,
-        contadorColor: 0,
-        historial: [
-            {
-                orden: 'ORD-2026-064',
-                fecha: '2026-07-22',
-                tipo: 'Preventivo',
-                tecnico: 'J. Medina',
-                diagnostico: 'Mantenimiento y cambio de cartucho de tóner.',
-                repuestos: 'Tóner HP 58A',
-                contador: 18450
-            }
-        ]
-    },
-    {
-        id: 3,
-        serial: 'SER-EPS-L3110',
-        tipo: 'Tinta Continua',
-        marca: 'Epson',
-        modelo: 'EcoTank L3110',
-        descripcion: 'Multifuncional de inyección continua.',
-        cliente: 'Oak Valley Clinic',
-        contadorBN: 8900,
-        contadorColor: 14200,
-        historial: []
-    }
-];
+import { mockEquipos } from '../data/equiposData';
 
 const EquiposPage = () => {
-    const [equipos, setEquipos] = useState(EQUIPOS_DATA);
+    const [equipos, setEquipos] = useState(mockEquipos);
 
     // Estados de filtros para FilterBar
     const [searchSerial, setSearchSerial] = useState('');
@@ -148,7 +80,7 @@ const EquiposPage = () => {
         });
     };
 
-    // Filtro con normalizeText existente
+    // Filtro con normalizeText
     const filteredEquipos = useMemo(() => {
         return equipos.filter(item => {
             const matchSerial = normalizeText(item.serial).includes(normalizeText(searchSerial)) ||
@@ -159,7 +91,7 @@ const EquiposPage = () => {
         });
     }, [equipos, searchSerial, searchClient]);
 
-    // Columnas para el componente reutilizable Table
+    // Columnas de la tabla principal de Equipos
     const columns = [
         {
             key: 'serial',
@@ -224,7 +156,7 @@ const EquiposPage = () => {
         }
     ];
 
-    // Columnas para la tabla dentro del modal de Historial (RF-04)
+    // Columnas para el modal de Historial (RF-04)
     const historyColumns = [
         { key: 'orden', label: 'N° Orden', className: 'font-mono font-bold text-slate-800' },
         { key: 'fecha', label: 'Fecha' },
@@ -241,7 +173,6 @@ const EquiposPage = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-xl font-bold text-slate-800">Expediente y Registro de Equipos</h2>
@@ -253,10 +184,8 @@ const EquiposPage = () => {
                 </Button>
             </div>
 
-            {/* Filtros Reutilizables */}
             <FilterBar fields={filterFields} onReset={handleResetFilters} />
 
-            {/* Tabla Reutilizable de Equipos */}
             <Card>
                 <Table
                     columns={columns}
@@ -346,7 +275,6 @@ const EquiposPage = () => {
             >
                 {selectedEquipment && (
                     <div className="space-y-4">
-                        {/* Ficha Rápida del Equipo */}
                         <div className="p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                             <div>
                                 <span className="text-slate-400 block font-medium">Marca y Modelo</span>
@@ -368,7 +296,6 @@ const EquiposPage = () => {
                             </div>
                         </div>
 
-                        {/* Tabla Reutilizable de Historial de Reparaciones */}
                         <div>
                             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                 <History size={14} className="text-[#97C719]" />

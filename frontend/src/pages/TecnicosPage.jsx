@@ -1,17 +1,30 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { UserPlus, Users, Wrench, AlertTriangle, Clock } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import Input from '../components/common/Input';
+import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
 import TecnicoCard from '../components/common/TecnicoCard';
 import { normalizeText } from '../utils/text';
+import { mockTecnicos } from '../data/tecnicosData';
 
-const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
-    // Estado de Filtros
+const TecnicosPage = () => {
+    const [tecnicos, setTecnicos] = useState(mockTecnicos);
+
+    // Estados de Filtros para FilterBar
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
 
-    // Configuración de Filtros para FilterBar
+    // Estados para creación de técnico
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [nuevoTecnico, setNuevoTecnico] = useState({
+        nombre: '',
+        cargo: 'Técnico',
+        estado: 'ACTIVE',
+    });
+
+    // Configuración de Filtros
     const filterFields = [
         {
             id: 'search',
@@ -41,63 +54,46 @@ const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
         setStatusFilter('ALL');
     };
 
-    // Mock Data
-    const tecnicosData = [
-        {
-            id: 1,
-            nombre: 'Hector Luis Rodriguez',
-            cargo: 'Técnico',
-            estado: 'ACTIVE',
-            ordenesActuales: [
-                { codigo: 'ORD-2026-001', estatus: 'En Proceso' },
-                { codigo: 'ORD-2026-004', estatus: 'Diagnóstico' },
-            ],
-        },
-        {
-            id: 2,
-            nombre: 'Dario Jose Jimenez',
-            cargo: 'Técnico',
-            estado: 'ACTIVE',
-            ordenesActuales: [
-                { codigo: 'ORD-2026-002', estatus: 'En Proceso' },
-            ],
-        },
-        {
-            id: 3,
-            nombre: 'Domingo',
-            cargo: 'Técnico',
-            estado: 'ON_BREAK',
-            ordenesActuales: [
-                { codigo: 'ORD-2026-009', estatus: 'En Espera' },
-            ],
-        },
-        {
-            id: 4,
-            nombre: 'Eloy',
-            cargo: 'Técnico',
-            estado: 'OFF_DUTY',
-            ordenesActuales: [],
-        },
-    ];
+    // Guardar nuevo técnico
+    const handleSaveTecnico = (e) => {
+        e.preventDefault();
+        const nuevo = {
+            id: Date.now(),
+            ...nuevoTecnico,
+            ordenesActuales: []
+        };
+        setTecnicos([nuevo, ...tecnicos]);
+        setIsCreateOpen(false);
+        setNuevoTecnico({ nombre: '', cargo: 'Técnico', estado: 'ACTIVE' });
+    };
 
-    // Filtrado ignorando acentos y mayúsculas
+    // Métricas calculadas dinámicamente
+    const stats = useMemo(() => {
+        const activos = tecnicos.filter(t => t.estado === 'ACTIVE').length;
+        const totalOrdenes = tecnicos.reduce((acc, t) => acc + t.ordenesActuales.length, 0);
+        const enEspera = tecnicos.reduce((acc, t) => {
+            return acc + t.ordenesActuales.filter(o => o.estatus === 'En Espera').length;
+        }, 0);
+
+        return { activos, totalOrdenes, enEspera };
+    }, [tecnicos]);
+
+    // Filtrado por búsqueda de texto y estado
     const filteredTechnicians = useMemo(() => {
-        return tecnicosData.filter((tec) => {
+        return tecnicos.filter((tec) => {
             const term = normalizeText(searchQuery);
             const matchesName = normalizeText(tec.nombre).includes(term);
             const matchesRole = normalizeText(tec.cargo).includes(term);
 
             const matchesSearch = matchesName || matchesRole;
-            const matchesStatus =
-                statusFilter === 'ALL' || tec.estado === statusFilter;
+            const matchesStatus = statusFilter === 'ALL' || tec.estado === statusFilter;
 
             return matchesSearch && matchesStatus;
         });
-    }, [tecnicosData, searchQuery, statusFilter]);
+    }, [tecnicos, searchQuery, statusFilter]);
 
     return (
         <div className="space-y-6">
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -112,7 +108,7 @@ const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
                 <Button
                     variant="primary"
                     icon={UserPlus}
-                    onClick={onOpenNewTechnicianModal}
+                    onClick={() => setIsCreateOpen(true)}
                 >
                     Agregar Técnico
                 </Button>
@@ -123,7 +119,7 @@ const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
                 <Card className="p-4 flex items-center justify-between">
                     <div>
                         <p className="text-xs font-semibold text-slate-500">Técnicos Activos</p>
-                        <h3 className="text-xl font-bold text-slate-800 mt-1">2</h3>
+                        <h3 className="text-xl font-bold text-slate-800 mt-1">{stats.activos}</h3>
                     </div>
                     <div className="p-2.5 rounded-lg bg-[#F3F7E9] text-[#55720C]">
                         <Users size={20} />
@@ -133,7 +129,7 @@ const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
                 <Card className="p-4 flex items-center justify-between">
                     <div>
                         <p className="text-xs font-semibold text-slate-500">Órdenes en Taller</p>
-                        <h3 className="text-xl font-bold text-slate-800 mt-1">4</h3>
+                        <h3 className="text-xl font-bold text-slate-800 mt-1">{stats.totalOrdenes}</h3>
                     </div>
                     <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
                         <Wrench size={20} />
@@ -143,7 +139,7 @@ const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
                 <Card className="p-4 flex items-center justify-between">
                     <div>
                         <p className="text-xs font-semibold text-slate-500">Pendientes por Piezas</p>
-                        <h3 className="text-xl font-bold text-slate-800 mt-1">1</h3>
+                        <h3 className="text-xl font-bold text-slate-800 mt-1">{stats.enEspera}</h3>
                     </div>
                     <div className="p-2.5 rounded-lg bg-amber-50 text-amber-600">
                         <AlertTriangle size={20} />
@@ -161,7 +157,7 @@ const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
                 </Card>
             </div>
 
-            {/* Barra de Filtros Genérica */}
+            {/* FilterBar */}
             <FilterBar fields={filterFields} onReset={handleResetFilters} />
 
             {/* Grid de Tarjetas de Técnicos */}
@@ -182,6 +178,49 @@ const TecnicosPage = ({ onOpenNewTechnicianModal }) => {
                 </Card>
             )}
 
+            {/* Modal para alta de técnico */}
+            <Modal
+                isOpen={isCreateOpen}
+                onClose={() => setIsCreateOpen(false)}
+                title="Registrar Nuevo Técnico"
+            >
+                <form onSubmit={handleSaveTecnico} className="space-y-4">
+                    <Input
+                        label="Nombre Completo *"
+                        placeholder="Ej. Eloy Rodríguez"
+                        value={nuevoTecnico.nombre}
+                        onChange={(e) => setNuevoTecnico({ ...nuevoTecnico, nombre: e.target.value })}
+                        required
+                    />
+                    <Input
+                        label="Cargo / Especialidad"
+                        placeholder="Ej. Técnico Senior / Especialista Kyocera"
+                        value={nuevoTecnico.cargo}
+                        onChange={(e) => setNuevoTecnico({ ...nuevoTecnico, cargo: e.target.value })}
+                    />
+                    <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Estatus Inicial</label>
+                        <select
+                            value={nuevoTecnico.estado}
+                            onChange={(e) => setNuevoTecnico({ ...nuevoTecnico, estado: e.target.value })}
+                            className="w-full bg-white border border-[#E2E8F0] text-xs text-slate-800 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719]"
+                        >
+                            <option value="ACTIVE">Activo</option>
+                            <option value="ON_BREAK">En Pausa</option>
+                            <option value="OFF_DUTY">Inactivo</option>
+                        </select>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
+                        <Button type="button" variant="secondary" onClick={() => setIsCreateOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" variant="primary">
+                            Guardar Técnico
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };

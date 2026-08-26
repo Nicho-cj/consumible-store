@@ -11,10 +11,8 @@ import {
     Database,
     HardDriveDownload,
     Calendar,
-    Search,
     FileText,
     Eye,
-    Wrench,
     FileSpreadsheet
 } from 'lucide-react';
 import Card, { MetricCard } from '../components/common/Card';
@@ -22,8 +20,8 @@ import Table from '../components/common/Table';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
-import { ORDER_STATUS } from '../utils/status';
 import { normalizeText } from '../utils/text';
+import { mockLiquidacionesData, mockAuditLogsData } from '../data/reportesData';
 
 // Función para formatear fechas a formato DD/MM/YYYY
 const formatDate = (dateStr) => {
@@ -36,10 +34,8 @@ const formatDate = (dateStr) => {
 };
 
 const ReportesPage = () => {
-    // Referencia para react-to-print
+    // Referencia e integración para react-to-print
     const contentRef = useRef(null);
-
-    // Integración de react-to-print
     const handlePrintReport = useReactToPrint({
         contentRef: contentRef,
         documentTitle: `Reporte_Liquidacion_Consumible_Store_${new Date().toISOString().slice(0, 10)}`,
@@ -48,181 +44,20 @@ const ReportesPage = () => {
     // Pestaña activa: 'LIQUIDACION' | 'LOGS' | 'BACKUP'
     const [activeTab, setActiveTab] = useState('LIQUIDACION');
 
-    // Filtros de Liquidación por Fecha de Ingreso y Técnico
+    // Filtros de Liquidación
     const [selectedTechnician, setSelectedTechnician] = useState('ALL');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Estado del modal de Vista Previa del Reporte PDF
+    // Estado del modal de Vista Previa
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     // Filtros de Logs
     const [logSearch, setLogSearch] = useState('');
     const [logModuleFilter, setLogModuleFilter] = useState('ALL');
 
-    // Mock Data de Servicios Finalizados para Liquidación
-    const liquidacionesData = [
-        {
-            id: 1,
-            codigo: 'ORD-2026-001',
-            fechaIngreso: '2026-08-10',
-            fechaCierre: '2026-08-14',
-            tecnico: 'Hector Luis Rodriguez',
-            cliente: 'Carlos Rodríguez',
-            equipo: 'Epson L3110',
-            serial: 'SER-11029',
-            tipoServicio: 'Mantenimiento Correctivo',
-            trabajoRealizado: 'Limpieza de cabezal y cambio de almohadillas',
-            repuestosUsados: 'Almohadillas Epson L3110',
-            montoTotal: 35.0,
-            estado: ORDER_STATUS.ENTREGADO
-        },
-        {
-            id: 2,
-            codigo: 'ORD-2026-002',
-            fechaIngreso: '2026-08-12',
-            fechaCierre: '2026-08-15',
-            tecnico: 'Dario Jose Jimenez',
-            cliente: 'María Gómez',
-            equipo: 'HP LaserJet M404dn',
-            serial: 'SER-990011',
-            tipoServicio: 'Revisión y Reparación',
-            trabajoRealizado: 'Reemplazo de rodillo de arrastre (Pick-up roller)',
-            repuestosUsados: 'Pick-up roller HP M404',
-            montoTotal: 45.0,
-            estado: ORDER_STATUS.ENTREGADO
-        },
-        {
-            id: 3,
-            codigo: 'ORD-2026-003',
-            fechaIngreso: '2026-08-13',
-            fechaCierre: '2026-08-16',
-            tecnico: 'Hector Luis Rodriguez',
-            cliente: 'Inversiones C.A.',
-            equipo: 'Canon G3110',
-            serial: 'SER-443322',
-            tipoServicio: 'Mantenimiento Preventivo',
-            trabajoRealizado: 'Mantenimiento general de sistema continuo y purga de tintas',
-            repuestosUsados: 'Ninguno',
-            montoTotal: 25.0,
-            estado: ORDER_STATUS.ENTREGADO
-        },
-        {
-            id: 4,
-            codigo: 'ORD-2026-005',
-            fechaIngreso: '2026-08-15',
-            fechaCierre: '2026-08-18',
-            tecnico: 'Domingo',
-            cliente: 'Pedro Perez',
-            equipo: 'Epson L805',
-            serial: 'SER-000000',
-            tipoServicio: 'Mantenimiento Correctivo',
-            trabajoRealizado: 'Destape por ultrasonido de inyectores y calibración',
-            repuestosUsados: 'Líquido destapador especializado',
-            montoTotal: 50.0,
-            estado: ORDER_STATUS.ENTREGADO
-        },
-        {
-            id: 5,
-            codigo: 'ORD-2026-008',
-            fechaIngreso: '2026-08-18',
-            fechaCierre: '2026-08-21',
-            tecnico: 'Dario Jose Jimenez',
-            cliente: 'DellAcuatica CA',
-            equipo: 'Kyocera ECOSYS M2040dn',
-            serial: 'SER-882211',
-            tipoServicio: 'Mantenimiento Correctivo',
-            trabajoRealizado: 'Cambio de engranaje de fusor y limpieza de escáner',
-            repuestosUsados: 'Engranaje de tracción de fusor',
-            montoTotal: 65.0,
-            estado: ORDER_STATUS.ENTREGADO
-        },
-        {
-            id: 6,
-            codigo: 'ORD-2026-010',
-            fechaIngreso: '2026-08-20',
-            fechaCierre: '2026-08-23',
-            tecnico: 'Eloy',
-            cliente: 'Distribuidora del Sur',
-            equipo: 'Brother DCP-T510W',
-            serial: 'SER-554433',
-            tipoServicio: 'Revisión y Reparación',
-            trabajoRealizado: 'Reemplazo de sensor de paso de papel y mantenimiento del mecanismo',
-            repuestosUsados: 'Sensor óptico de papel Brother',
-            montoTotal: 40.0,
-            estado: ORDER_STATUS.ENTREGADO
-        },
-        {
-            id: 7,
-            codigo: 'ORD-2026-012',
-            fechaIngreso: '2026-08-22',
-            fechaCierre: '2026-08-25',
-            tecnico: 'Jesús Saavedra',
-            cliente: 'Clínica Guayana',
-            equipo: 'Zebra ZD220',
-            serial: 'SER-776655',
-            tipoServicio: 'Mantenimiento Preventivo',
-            trabajoRealizado: 'Limpieza de cabezal térmico y calibración de sensor de etiquetas',
-            repuestosUsados: 'Ninguno',
-            montoTotal: 30.0,
-            estado: ORDER_STATUS.ENTREGADO
-        }
-    ];
-
-    // Mock Data del Log de Auditoría / Registros del Sistema (RNF-05 / RNF-06)
-    const auditLogsData = [
-        {
-            id: 'LOG-109',
-            fecha: '2026-08-25 10:45 AM',
-            usuario: 'Administrador (Recepción)',
-            modulo: 'Órdenes',
-            accion: 'Creación de Orden',
-            detalles: 'Se registró la orden ORD-2026-015 para el cliente Jesús Saavedra (Serial: SER-990011).'
-        },
-        {
-            id: 'LOG-108',
-            fecha: '2026-08-25 09:30 AM',
-            usuario: 'Dario Jose Jimenez',
-            modulo: 'Taller',
-            accion: 'Diagnóstico Técnico',
-            detalles: 'Se ingresó diagnóstico y presupuesto de $45.00 en la orden ORD-2026-002.'
-        },
-        {
-            id: 'LOG-107',
-            fecha: '2026-08-24 04:15 PM',
-            usuario: 'Administrador (Recepción)',
-            modulo: 'Liquidación',
-            accion: 'Cierre y Cobro de Servicio',
-            detalles: 'Orden ORD-2026-008 cambiada a "Entregado / Finalizado". Cobrado $65.00 en punto de venta.'
-        },
-        {
-            id: 'LOG-106',
-            fecha: '2026-08-24 02:00 PM',
-            usuario: 'Hector Luis Rodriguez',
-            modulo: 'Taller',
-            accion: 'Cambio de Estatus',
-            detalles: 'Orden ORD-2026-003 pasó de "En Reparación" a "Listo para Entrega".'
-        },
-        {
-            id: 'LOG-105',
-            fecha: '2026-08-23 11:10 AM',
-            usuario: 'Administrador (Recepción)',
-            modulo: 'Clientes',
-            accion: 'Registro de Cliente',
-            detalles: 'Se dio de alta el cliente Inversiones C.A. (RIF: J-12345678-0).'
-        },
-        {
-            id: 'LOG-104',
-            fecha: '2026-08-22 05:00 PM',
-            usuario: 'Sistema (Automático)',
-            modulo: 'Seguridad',
-            accion: 'Copia de Seguridad LAN',
-            detalles: 'Respaldo automático de base de datos completado exitosamente (backup_20260822.sql).'
-        },
-    ];
-
-    // Configuración de Filtros para Detalle de Servicios / Liquidación
+    // Configuración de Filtros
     const filterFields = [
         {
             id: 'tecnico',
@@ -270,7 +105,6 @@ const ReportesPage = () => {
         setSearchQuery('');
     };
 
-    // Filtros rápidos de fecha preestablecidos
     const handleQuickDatePreset = (preset) => {
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -298,12 +132,11 @@ const ReportesPage = () => {
         }
     };
 
-    // Filtrado de Liquidaciones por Fecha de Ingreso, Técnico y Búsqueda
+    // Filtrado de Liquidaciones
     const filteredLiquidaciones = useMemo(() => {
-        return liquidacionesData.filter((item) => {
+        return mockLiquidacionesData.filter((item) => {
             const matchesTecnico = selectedTechnician === 'ALL' || item.tecnico === selectedTechnician;
 
-            // Filtro por Fecha de Ingreso
             const itemDate = new Date(item.fechaIngreso);
             const start = startDate ? new Date(startDate) : null;
             const end = endDate ? new Date(endDate) : null;
@@ -311,7 +144,6 @@ const ReportesPage = () => {
             const matchesStart = !start || itemDate >= start;
             const matchesEnd = !end || itemDate <= end;
 
-            // Búsqueda por texto (orden, cliente, equipo, serial, trabajo)
             const query = normalizeText(searchQuery);
             const matchesSearch = !query ||
                 normalizeText(item.codigo).includes(query) ||
@@ -322,11 +154,11 @@ const ReportesPage = () => {
 
             return matchesTecnico && matchesStart && matchesEnd && matchesSearch;
         });
-    }, [liquidacionesData, selectedTechnician, startDate, endDate, searchQuery]);
+    }, [selectedTechnician, startDate, endDate, searchQuery]);
 
     // Filtrado de Logs
     const filteredLogs = useMemo(() => {
-        return auditLogsData.filter((log) => {
+        return mockAuditLogsData.filter((log) => {
             const term = normalizeText(logSearch);
             const matchesSearch =
                 normalizeText(log.detalles).includes(term) ||
@@ -338,7 +170,7 @@ const ReportesPage = () => {
 
             return matchesSearch && matchesModule;
         });
-    }, [auditLogsData, logSearch, logModuleFilter]);
+    }, [logSearch, logModuleFilter]);
 
     // Totales Calculados
     const totalFacturado = useMemo(() => {
@@ -351,7 +183,7 @@ const ReportesPage = () => {
             : '0.00';
     }, [filteredLiquidaciones, totalFacturado]);
 
-    // Resumen por Técnico Individual
+    // Resumen por Técnico
     const resumenPorTecnico = useMemo(() => {
         const map = {};
         filteredLiquidaciones.forEach((item) => {
@@ -466,14 +298,13 @@ const ReportesPage = () => {
         }
     ];
 
-    // Descargar backup JSON
     const handleDownloadBackup = () => {
         const backupData = {
             fechaGeneracion: new Date().toISOString(),
             sistema: 'Consumible Store - Control de Servicio Técnico',
             version: '1.0.0',
-            liquidaciones: liquidacionesData,
-            auditLogs: auditLogsData
+            liquidaciones: mockLiquidacionesData,
+            auditLogs: mockAuditLogsData
         };
 
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
@@ -485,10 +316,9 @@ const ReportesPage = () => {
         downloadAnchor.remove();
     };
 
-    // Componente reutilizable con la estructura formal del Reporte Imprimible
+    // Plantilla formal para la hoja imprimible
     const ReportContent = ({ isModalView = false }) => (
         <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-8'}`}>
-            {/* Encabezado Membretado */}
             <div className="border-b-2 border-slate-900 pb-4 mb-4">
                 <div className="flex flex-row justify-between items-start">
                     <div>
@@ -522,7 +352,6 @@ const ReportesPage = () => {
                 </div>
             </div>
 
-            {/* Parámetros de Filtro y Resumen del Reporte */}
             <div className="mb-4 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2 border border-slate-300 bg-slate-50 p-2.5 rounded">
                 <div>
                     <span className="text-slate-500 block text-[10px]">Técnico:</span>
@@ -544,7 +373,6 @@ const ReportesPage = () => {
                 </div>
             </div>
 
-            {/* Tabla Principal del Reporte */}
             <table className="w-full text-left text-[11px] border-collapse border border-slate-800 mb-4">
                 <thead>
                     <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[10px]">
@@ -610,7 +438,6 @@ const ReportesPage = () => {
                 </tfoot>
             </table>
 
-            {/* Resumen por Técnico */}
             {resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
                 <div className="mb-6 pt-2">
                     <h3 className="text-[10px] font-bold uppercase text-slate-700 mb-1">
@@ -630,7 +457,6 @@ const ReportesPage = () => {
                 </div>
             )}
 
-            {/* Firmas de Conformidad */}
             <div className="grid grid-cols-2 gap-12 mt-10 pt-4 text-xs text-center border-t border-slate-300">
                 <div className="pt-2">
                     <div className="w-48 border-t border-slate-800 mx-auto mb-1"></div>
@@ -668,7 +494,6 @@ const ReportesPage = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    {/* Botón de Vista Previa Modal */}
                     <Button
                         variant="secondary"
                         icon={Eye}
@@ -677,7 +502,6 @@ const ReportesPage = () => {
                         Vista Previa
                     </Button>
 
-                    {/* Botón de Impresión Directa vía react-to-print */}
                     <Button
                         variant="primary"
                         icon={Printer}
@@ -686,7 +510,6 @@ const ReportesPage = () => {
                         Imprimir / Guardar PDF
                     </Button>
 
-                    {/* Descargar Respaldo JSON */}
                     <Button
                         variant="secondary"
                         icon={HardDriveDownload}
@@ -697,7 +520,7 @@ const ReportesPage = () => {
                 </div>
             </div>
 
-            {/* Navegación por Pestañas */}
+            {/* Pestañas */}
             <div className="flex border-b border-slate-200 gap-6">
                 <button
                     onClick={() => setActiveTab('LIQUIDACION')}
@@ -733,13 +556,10 @@ const ReportesPage = () => {
                 </button>
             </div>
 
-            {/* ======================================================== */}
-            {/* PESTAÑA 1: DETALLE DE SERVICIOS PARA LIQUIDACIÓN */}
-            {/* ======================================================== */}
+            {/* PESTAÑA LIQUIDACIÓN */}
             {activeTab === 'LIQUIDACION' && (
                 <div className="space-y-6">
 
-                    {/* Tarjetas Métricas Clave */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <MetricCard
                             title="Total Monto Cobrado"
@@ -747,21 +567,18 @@ const ReportesPage = () => {
                             icon={DollarSign}
                             color="emerald"
                         />
-
                         <MetricCard
                             title="Servicios en el Reporte"
                             value={filteredLiquidaciones.length.toString()}
                             icon={CheckCircle2}
                             color="blue"
                         />
-
                         <MetricCard
                             title="Ticket Promedio"
                             value={`$${ticketPromedio}`}
                             icon={TrendingUp}
                             color="amber"
                         />
-
                         <MetricCard
                             title="Técnicos Involucrados"
                             value={resumenPorTecnico.length.toString()}
@@ -770,7 +587,6 @@ const ReportesPage = () => {
                         />
                     </div>
 
-                    {/* Barra de Filtros */}
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
                             <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
@@ -808,7 +624,6 @@ const ReportesPage = () => {
                         <FilterBar fields={filterFields} onReset={handleResetFilters} />
                     </div>
 
-                    {/* Resumen Individual por Técnico */}
                     {resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                             {resumenPorTecnico.map((tec) => (
@@ -830,7 +645,6 @@ const ReportesPage = () => {
                         </div>
                     )}
 
-                    {/* Tabla Principal de Detalle de Servicios */}
                     <Card>
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                             <div>
@@ -867,13 +681,10 @@ const ReportesPage = () => {
                 </div>
             )}
 
-            {/* ======================================================== */}
-            {/* PESTAÑA 2: AUDITORÍA Y LOGS DE ACTIVIDAD */}
-            {/* ======================================================== */}
+            {/* PESTAÑA LOGS */}
             {activeTab === 'LOGS' && (
                 <div className="space-y-6">
 
-                    {/* Filtros de Logs */}
                     <Card className="p-4">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="sm:col-span-2">
@@ -909,7 +720,6 @@ const ReportesPage = () => {
                         </div>
                     </Card>
 
-                    {/* Tabla de Logs */}
                     <Card>
                         <div className="flex justify-between items-center mb-4">
                             <div>
@@ -931,9 +741,7 @@ const ReportesPage = () => {
                 </div>
             )}
 
-            {/* ======================================================== */}
-            {/* PESTAÑA 3: RESPALDOS DE INFORMACIÓN (RNF-06) */}
-            {/* ======================================================== */}
+            {/* PESTAÑA BACKUP */}
             {activeTab === 'BACKUP' && (
                 <div className="space-y-6">
 
@@ -985,9 +793,7 @@ const ReportesPage = () => {
                 </div>
             )}
 
-            {/* ======================================================== */}
-            {/* MODAL DE VISTA PREVIA DEL REPORTE ANTES DE IMPRIMIR */}
-            {/* ======================================================== */}
+            {/* MODAL DE VISTA PREVIA */}
             <Modal
                 isOpen={isPreviewOpen}
                 onClose={() => setIsPreviewOpen(false)}
@@ -1024,9 +830,7 @@ const ReportesPage = () => {
                 </div>
             </Modal>
 
-            {/* ======================================================== */}
-            {/* NODO OCULTO EN UI QUE REACT-TO-PRINT UTILIZA PARA IMPRIMIR */}
-            {/* ======================================================== */}
+            {/* CONTENEDOR OCULTO PARA RECENT-TO-PRINT */}
             <div className="hidden">
                 <div ref={contentRef}>
                     <ReportContent isModalView={false} />

@@ -2,16 +2,22 @@ import React from 'react';
 import { Phone, FileText, CreditCard } from 'lucide-react';
 import Card from './Card';
 
-const CustomerCard = ({ customer, onClick }) => {
+const CustomerCard = ({ customer = {}, onClick }) => {
     const {
-        nombre,         // Persona Natural o Razón Social
-        documento,      // V-12345678, J-12345678-0, etc.
+        nombre = 'Sin Nombre',
+        cedulaRif,
+        documento,
         telefono,
         estado = 'ACTIVE',
         totalOrdenes = 0,
     } = customer;
 
-    const isActive = estado === 'ACTIVE';
+    // Acepta cedulaRif o documento según lo que entregue la data
+    const docIdentidad = cedulaRif || documento;
+
+    // Soporta 'ACTIVE', 'activo', 'IDLE', 'inactivo'
+    const normalizedEstado = String(estado).toUpperCase();
+    const isActive = normalizedEstado === 'ACTIVE' || normalizedEstado === 'ACTIVO';
 
     return (
         <Card
@@ -27,12 +33,12 @@ const CustomerCard = ({ customer, onClick }) => {
                     </h3>
                 </div>
 
-                {/* Datos de Contacto Generalizados (Sin Email) */}
+                {/* Datos de Contacto */}
                 <div className="space-y-2 text-xs text-slate-600">
-                    {documento && (
+                    {docIdentidad && (
                         <div className="flex items-center gap-2.5">
                             <CreditCard size={14} className="text-slate-400 shrink-0" />
-                            <span className="font-mono">{documento}</span>
+                            <span className="font-mono">{docIdentidad}</span>
                         </div>
                     )}
 
@@ -44,7 +50,7 @@ const CustomerCard = ({ customer, onClick }) => {
                     )}
                 </div>
 
-                {/* Footer */}
+                {/* Footer de Tarjeta */}
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5 font-bold tracking-wider text-[11px]">
                         <span

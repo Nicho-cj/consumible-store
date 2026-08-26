@@ -22,8 +22,8 @@ export const sanitizeForApi = (value = '') => {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '') // Elimina acentos/tildes
         .toLowerCase()                   // Fuerza minúsculas
-        .replace(/\s+/g, ' ')           // Convierte múltiples espacios en uno solo
-        .trim();                        // Elimina espacios al inicio y final
+        .replace(/\s+/g, ' ')            // Convierte múltiples espacios en uno solo
+        .trim();                         // Elimina espacios al inicio y final
 };
 
 /**
@@ -44,4 +44,16 @@ export const sanitizePayload = (data = {}) => {
     });
 
     return sanitized;
+};
+
+/**
+ * Sanitiza el número de cédula o RIF mientras el usuario tipea.
+ * Convierte a mayúsculas y elimina comas, puntos y espacios.
+ */
+export const sanitizeDocumentNumber = (value = '') => {
+    if (typeof value !== 'string') return '';
+    return value
+        .toUpperCase()
+        .replace(/[,.\s]/g, '')
+        .trim();
 };

@@ -5,17 +5,19 @@ import Table from '../components/common/Table';
 import Button from '../components/common/Button';
 import StatusBadge from '../components/common/StatusBadge';
 import FilterBar from '../components/common/FilterBar';
-import { ORDER_STATUS } from '../utils/status';
 import { normalizeText } from '../utils/text';
+import { mockOrdenes, ORDER_STATUS } from '../data/ordenesData';
 
 const OrdenesPage = ({ onOpenNewOrderModal }) => {
+    const [ordenes, setOrdenes] = useState(mockOrdenes);
+
     // Estados de Filtros
     const [searchSerial, setSearchSerial] = useState('');
     const [searchClient, setSearchClient] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
-    // Configuración de los campos para el FilterBar en ESTA vista
+    // Configuración de campos para el FilterBar
     const filterFields = [
         {
             id: 'serial',
@@ -56,19 +58,10 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
         setEndDate('');
     };
 
-    // Datos MOCK
-    const ordenesData = [
-        { id: 1, codigo: 'ORD-2026-001', serial: 'SER-11029', cliente: 'Carlos Rodríguez', equipo: 'Epson L3110', fecha: '2026-08-20', estado: ORDER_STATUS.EN_DIAGNOSTICO },
-        { id: 2, codigo: 'ORD-2026-002', serial: 'SER-990011', cliente: 'María Gómez', equipo: 'HP LaserJet M404dn', fecha: '2026-08-21', estado: ORDER_STATUS.RECIBIDO },
-        { id: 3, codigo: 'ORD-2026-003', serial: 'SER-443322', cliente: 'Inversiones C.A.', equipo: 'Canon G3110', fecha: '2026-08-22', estado: ORDER_STATUS.ESPERANDO_APROBACION },
-        { id: 4, codigo: 'ORD-2026-004', serial: 'SER-887711', cliente: 'Andrés López', equipo: 'POS-80 Printer', fecha: '2026-08-23', estado: ORDER_STATUS.EN_REPARACION },
-        { id: 5, codigo: 'ORD-2026-000', serial: 'SER-000000', cliente: 'Pedro Perez', equipo: 'Epson L805', fecha: '2026-08-10', estado: ORDER_STATUS.ENTREGADO }, // Queda fuera
-    ];
-
-    // Excluir órdenes culminadas y aplicar filtros de inputs
+    // Excluir órdenes entregadas y aplicar filtros
     const filteredOrders = useMemo(() => {
-        return ordenesData.filter((orden) => {
-            // Regla de Negocio: Excluir automáticamente las órdenes entregadas/cerradas
+        return ordenes.filter((orden) => {
+            // Regla de Negocio: Excluir órdenes entregadas de la vista de taller
             if (orden.estado === ORDER_STATUS.ENTREGADO) return false;
 
             // Filtro por Fechas
@@ -79,15 +72,13 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
             const matchesStart = !start || ordenDate >= start;
             const matchesEnd = !end || ordenDate <= end;
 
-            // Filtro por Serial
+            // Filtro por Serial y Cliente
             const matchesSerial = normalizeText(orden.serial).includes(normalizeText(searchSerial));
-
-            // Filtro por Cliente
             const matchesClient = normalizeText(orden.cliente).includes(normalizeText(searchClient));
 
             return matchesSerial && matchesClient && matchesStart && matchesEnd;
         });
-    }, [ordenesData, searchSerial, searchClient, startDate, endDate]);
+    }, [ordenes, searchSerial, searchClient, startDate, endDate]);
 
     const columns = [
         { key: 'codigo', label: 'N° Orden', className: 'font-semibold text-slate-800' },
@@ -125,14 +116,25 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                     <p className="text-xs text-slate-500 mt-1">Gestión y seguimiento de equipos activos en taller</p>
                 </div>
 
+                <Button
+                    variant="primary"
+                    icon={Plus}
+                    onClick={onOpenNewOrderModal || (() => alert('Abrir modal de nueva orden'))}
+                >
+                    Nueva Orden
+                </Button>
             </div>
 
             {/* Componente Genérico de Filtros */}
             <FilterBar fields={filterFields} onReset={handleResetFilters} />
 
-            {/* Tabla */}
+            {/* Tabla Principal */}
             <Card>
-                <Table columns={columns} data={filteredOrders} emptyMessage="No hay órdenes activas que coincidan con la búsqueda." />
+                <Table
+                    columns={columns}
+                    data={filteredOrders}
+                    emptyMessage="No hay órdenes activas que coincidan con la búsqueda."
+                />
             </Card>
         </div>
     );

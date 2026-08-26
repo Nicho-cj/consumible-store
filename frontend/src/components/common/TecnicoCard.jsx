@@ -22,8 +22,7 @@ const TecnicoCard = ({ technician, onViewOrders, onViewReport }) => {
     return (
         <Card className="p-5 flex flex-col justify-between h-full hover:shadow-md transition-shadow">
             <div className="space-y-4">
-
-                {/* Cabecera: Nombre y Estatus (Sin Imagen) */}
+                {/* Cabecera: Nombre y Estatus */}
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
                     <div>
                         <h3 className="font-bold text-slate-800 text-base leading-snug">
@@ -42,36 +41,35 @@ const TecnicoCard = ({ technician, onViewOrders, onViewReport }) => {
 
                 {/* Sección Central: Órdenes Asignadas */}
                 <div className="text-xs">
-                    <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                            Órdenes Actuales ({ordenesActuales.length})
-                        </span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                        Órdenes Actuales ({ordenesActuales.length})
+                    </span>
 
-                        {ordenesActuales.length > 0 ? (
-                            <div className="space-y-1.5">
-                                {ordenesActuales.map((ord) => (
-                                    <div
-                                        key={ord.codigo}
-                                        className="flex items-center justify-between bg-slate-50 p-2 rounded border border-slate-200/60 font-mono text-[11px]"
-                                    >
-                                        <span className="font-semibold text-slate-700">{ord.codigo}</span>
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-200">
-                                            {ord.estatus}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-slate-400 italic text-[11px]">Sin órdenes activas</p>
-                        )}
-                    </div>
+                    {ordenesActuales.length > 0 ? (
+                        <div className="space-y-1.5">
+                            {ordenesActuales.map((ord) => (
+                                <div
+                                    key={ord.codigo}
+                                    className="flex items-center justify-between bg-slate-50 p-2 rounded border border-slate-200/60 font-mono text-[11px]"
+                                >
+                                    <span className="font-semibold text-slate-700">{ord.codigo}</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-200">
+                                        {ord.estatus}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-slate-400 italic text-[11px]">Sin órdenes activas</p>
+                    )}
                 </div>
             </div>
 
             {/* Footer: Acciones del Técnico */}
             <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
                 <button
-                    onClick={onViewOrders}
+                    type="button"
+                    onClick={() => onViewOrders && onViewOrders(technician)}
                     className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                 >
                     Ver todas las órdenes
@@ -81,7 +79,7 @@ const TecnicoCard = ({ technician, onViewOrders, onViewReport }) => {
                     size="sm"
                     variant="secondary"
                     icon={BarChart2}
-                    onClick={onViewReport}
+                    onClick={() => onViewReport && onViewReport(technician)}
                     className="text-xs"
                 >
                     Reporte
