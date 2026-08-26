@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Table = ({ columns = [], data = [], isLoading = false, emptyMessage = 'No hay registros disponibles.' }) => {
     return (
         <div className="w-full overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">

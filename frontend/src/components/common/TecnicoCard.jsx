@@ -1,8 +1,8 @@
-import { BarChart2 } from 'lucide-react';
+import { History } from 'lucide-react';
 import Card from './Card';
 import Button from './Button';
 
-const TecnicoCard = ({ technician, onViewOrders, onViewReport }) => {
+const TecnicoCard = ({ technician, onViewOrders, onViewHistory }) => {
     const {
         nombre,
         cargo,
@@ -78,11 +78,11 @@ const TecnicoCard = ({ technician, onViewOrders, onViewReport }) => {
                 <Button
                     size="sm"
                     variant="secondary"
-                    icon={BarChart2}
-                    onClick={() => onViewReport && onViewReport(technician)}
+                    icon={History}
+                    onClick={() => onViewHistory && onViewHistory(technician)}
                     className="text-xs"
                 >
-                    Reporte
+                    Historial
                 </Button>
             </div>
         </Card>

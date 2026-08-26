@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ReportesPage from './ReportesPage';
@@ -40,7 +39,7 @@ describe('Página ReportesPage - Detalle de Servicios para Liquidación', () => 
     });
 
     it('llama a window.print al hacer clic en Imprimir / Guardar PDF', () => {
-        const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
+        const printSpy = vi.spyOn(window, 'print').mockImplementation(() => { });
         render(<ReportesPage />);
 
         const printButtons = screen.getAllByText('Imprimir / Guardar PDF');

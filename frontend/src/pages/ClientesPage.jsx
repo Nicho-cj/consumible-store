@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import CustomerCard from '../components/common/CustomerCard';
 import Input from '../components/common/Input';
+import ClienteDetalleModal from '../components/modals/ClienteDetalleModal';
 import { Search } from 'lucide-react';
 import { mockClientes } from '../data/clientesData';
 
 const ClientesPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCliente, setSelectedCliente] = useState(null);
 
     const clientesFiltrados = mockClientes.filter((cliente) => {
         const term = searchTerm.toLowerCase().trim();
@@ -38,7 +40,7 @@ const ClientesPage = () => {
                         <CustomerCard
                             key={cliente.id}
                             customer={cliente}
-                            onClick={() => alert(`Cliente seleccionado: ${cliente.nombre}`)}
+                            onClick={() => setSelectedCliente(cliente)}
                         />
                     ))}
                 </div>
@@ -47,6 +49,13 @@ const ClientesPage = () => {
                     <p className="text-xs text-slate-500">No se encontraron clientes que coincidan con la búsqueda.</p>
                 </div>
             )}
+
+            {/* Modal de Detalle de Cliente (Órdenes y Equipos) */}
+            <ClienteDetalleModal
+                isOpen={!!selectedCliente}
+                onClose={() => setSelectedCliente(null)}
+                customer={selectedCliente}
+            />
         </div>
     );
 };

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Phone, FileText, CreditCard } from 'lucide-react';
 import Card from './Card';
 
@@ -9,11 +8,19 @@ const CustomerCard = ({ customer = {}, onClick }) => {
         documento,
         telefono,
         estado = 'ACTIVE',
-        totalOrdenes = 0,
+        totalOrdenes,
+        ordenesActivas = [],
+        historialOrdenes = [],
     } = customer;
 
-    // Acepta cedulaRif o documento según lo que entregue la data
+    // Acepta cedulaRif o documento según entregue la data
     const docIdentidad = cedulaRif || documento;
+
+    // Calcula el total si no viene explícito en las props
+    const cantidadOrdenes =
+        typeof totalOrdenes === 'number'
+            ? totalOrdenes
+            : ordenesActivas.length + historialOrdenes.length;
 
     // Soporta 'ACTIVE', 'activo', 'IDLE', 'inactivo'
     const normalizedEstado = String(estado).toUpperCase();
@@ -65,7 +72,7 @@ const CustomerCard = ({ customer = {}, onClick }) => {
                     <div className="bg-[#F3F7E9] text-[#55720C] font-semibold px-2.5 py-1 rounded flex items-center gap-1.5 text-xs">
                         <FileText size={13} className="opacity-70" />
                         <span>
-                            {totalOrdenes} {totalOrdenes === 1 ? 'Órden' : 'Órdenes'}
+                            {cantidadOrdenes} {cantidadOrdenes === 1 ? 'Orden' : 'Órdenes'}
                         </span>
                     </div>
                 </div>

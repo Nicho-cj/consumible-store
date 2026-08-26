@@ -6,6 +6,7 @@ import Input from '../components/common/Input';
 import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
 import TecnicoCard from '../components/common/TecnicoCard';
+import TecnicoHistorialModal from '../components/modals/TecnicoHistorialModal';
 import { normalizeText } from '../utils/text';
 import { mockTecnicos } from '../data/tecnicosData';
 
@@ -23,6 +24,9 @@ const TecnicosPage = () => {
         cargo: 'Técnico',
         estado: 'ACTIVE',
     });
+
+    // Estado para seleccionar técnico y abrir Modal de Historial
+    const [selectedTecnicoHistory, setSelectedTecnicoHistory] = useState(null);
 
     // Configuración de Filtros
     const filterFields = [
@@ -60,7 +64,8 @@ const TecnicosPage = () => {
         const nuevo = {
             id: Date.now(),
             ...nuevoTecnico,
-            ordenesActuales: []
+            ordenesActuales: [],
+            historialOrdenes: [],
         };
         setTecnicos([nuevo, ...tecnicos]);
         setIsCreateOpen(false);
@@ -69,10 +74,10 @@ const TecnicosPage = () => {
 
     // Métricas calculadas dinámicamente
     const stats = useMemo(() => {
-        const activos = tecnicos.filter(t => t.estado === 'ACTIVE').length;
-        const totalOrdenes = tecnicos.reduce((acc, t) => acc + t.ordenesActuales.length, 0);
+        const activos = tecnicos.filter((t) => t.estado === 'ACTIVE').length;
+        const totalOrdenes = tecnicos.reduce((acc, t) => acc + (t.ordenesActuales?.length || 0), 0);
         const enEspera = tecnicos.reduce((acc, t) => {
-            return acc + t.ordenesActuales.filter(o => o.estatus === 'En Espera').length;
+            return acc + (t.ordenesActuales?.filter((o) => o.estatus === 'En Espera').length || 0);
         }, 0);
 
         return { activos, totalOrdenes, enEspera };
@@ -167,8 +172,8 @@ const TecnicosPage = () => {
                         <TecnicoCard
                             key={tec.id}
                             technician={tec}
-                            onViewOrders={() => alert(`Filtrar órdenes de: ${tec.nombre}`)}
-                            onViewReport={() => alert(`Generar reporte de: ${tec.nombre}`)}
+                            onViewOrders={() => alert(`Mostrando órdenes activas de: ${tec.nombre}`)}
+                            onViewHistory={() => setSelectedTecnicoHistory(tec)}
                         />
                     ))}
                 </div>
@@ -221,6 +226,13 @@ const TecnicosPage = () => {
                     </div>
                 </form>
             </Modal>
+
+            {/* Modal de Historial de Órdenes extraído a su propio componente */}
+            <TecnicoHistorialModal
+                isOpen={!!selectedTecnicoHistory}
+                onClose={() => setSelectedTecnicoHistory(null)}
+                technician={selectedTecnicoHistory}
+            />
         </div>
     );
 };

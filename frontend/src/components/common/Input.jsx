@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Input = ({ label, error, helperText, className = '', ...props }) => {
     return (
         <div className="flex flex-col gap-1 w-full">

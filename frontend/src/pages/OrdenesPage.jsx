@@ -1,3 +1,4 @@
+// src/pages/OrdenesPage.jsx
 import { useState, useMemo } from 'react';
 import { Eye, Plus } from 'lucide-react';
 import Card from '../components/common/Card';
@@ -5,11 +6,15 @@ import Table from '../components/common/Table';
 import Button from '../components/common/Button';
 import StatusBadge from '../components/common/StatusBadge';
 import FilterBar from '../components/common/FilterBar';
+import OrdenDetalleModal from '../components/modals/OrdenDetalleModal';
 import { normalizeText } from '../utils/text';
 import { mockOrdenes, ORDER_STATUS } from '../data/ordenesData';
 
 const OrdenesPage = ({ onOpenNewOrderModal }) => {
     const [ordenes, setOrdenes] = useState(mockOrdenes);
+
+    // Estado para gestionar la orden seleccionada y la visibilidad del modal
+    const [selectedOrden, setSelectedOrden] = useState(null);
 
     // Estados de Filtros
     const [searchSerial, setSearchSerial] = useState('');
@@ -61,11 +66,11 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
     // Excluir órdenes entregadas y aplicar filtros
     const filteredOrders = useMemo(() => {
         return ordenes.filter((orden) => {
-            // Regla de Negocio: Excluir órdenes entregadas de la vista de taller
+            // Regla de Negocio
             if (orden.estado === ORDER_STATUS.ENTREGADO) return false;
 
             // Filtro por Fechas
-            const ordenDate = new Date(orden.fecha);
+            const ordenDate = new Date(orden.fechaIngreso || orden.fecha);
             const start = startDate ? new Date(startDate) : null;
             const end = endDate ? new Date(endDate) : null;
 
@@ -73,8 +78,11 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
             const matchesEnd = !end || ordenDate <= end;
 
             // Filtro por Serial y Cliente
-            const matchesSerial = normalizeText(orden.serial).includes(normalizeText(searchSerial));
-            const matchesClient = normalizeText(orden.cliente).includes(normalizeText(searchClient));
+            const serialValue = orden.equipoSerie || orden.serial || '';
+            const clientValue = orden.clienteNombre || orden.cliente || '';
+
+            const matchesSerial = normalizeText(serialValue).includes(normalizeText(searchSerial));
+            const matchesClient = normalizeText(clientValue).includes(normalizeText(searchClient));
 
             return matchesSerial && matchesClient && matchesStart && matchesEnd;
         });
@@ -82,10 +90,27 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
 
     const columns = [
         { key: 'codigo', label: 'N° Orden', className: 'font-semibold text-slate-800' },
-        { key: 'serial', label: 'N° Serial', className: 'font-mono text-xs text-slate-600' },
-        { key: 'cliente', label: 'Cliente' },
-        { key: 'equipo', label: 'Equipo / Modelo' },
-        { key: 'fecha', label: 'Fecha Ingreso' },
+        {
+            key: 'serial',
+            label: 'N° Serial',
+            className: 'font-mono text-xs text-slate-600',
+            render: (row) => row.equipoSerie || row.serial || 'N/A'
+        },
+        {
+            key: 'cliente',
+            label: 'Cliente',
+            render: (row) => row.clienteNombre || row.cliente
+        },
+        {
+            key: 'equipo',
+            label: 'Equipo / Modelo',
+            render: (row) => row.equipoModelo || row.equipo
+        },
+        {
+            key: 'fecha',
+            label: 'Fecha Ingreso',
+            render: (row) => row.fechaIngreso || row.fecha
+        },
         {
             key: 'estado',
             label: 'Estatus Activo',
@@ -100,7 +125,7 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                     size="sm"
                     variant="ghost"
                     icon={Eye}
-                    onClick={() => alert(`Abrir detalle de ${row.codigo}`)}
+                    onClick={() => setSelectedOrden(row)}
                 >
                     Ver Detalle
                 </Button>
@@ -125,10 +150,9 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                 </Button>
             </div>
 
-            {/* Componente Genérico de Filtros */}
+
             <FilterBar fields={filterFields} onReset={handleResetFilters} />
 
-            {/* Tabla Principal */}
             <Card>
                 <Table
                     columns={columns}
@@ -136,6 +160,12 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                     emptyMessage="No hay órdenes activas que coincidan con la búsqueda."
                 />
             </Card>
+
+            <OrdenDetalleModal
+                isOpen={!!selectedOrden}
+                onClose={() => setSelectedOrden(null)}
+                order={selectedOrden}
+            />
         </div>
     );
 };
