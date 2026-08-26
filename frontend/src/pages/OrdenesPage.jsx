@@ -1,4 +1,3 @@
-// src/pages/OrdenesPage.jsx
 import { useState, useMemo } from 'react';
 import { Eye, Plus } from 'lucide-react';
 import Card from '../components/common/Card';

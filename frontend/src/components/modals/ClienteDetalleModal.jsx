@@ -1,4 +1,3 @@
-// src/components/modals/ClienteDetalleModal.jsx
 import { useState } from 'react';
 import { Wrench, Laptop, CheckCircle2, Clock } from 'lucide-react';
 import Modal from '../common/Modal';
@@ -41,8 +40,8 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                         type="button"
                         onClick={() => setActiveTab('ordenes')}
                         className={`pb-2 transition-colors flex items-center gap-1.5 border-b-2 cursor-pointer ${activeTab === 'ordenes'
-                                ? 'border-[#97C719] text-[#55720C]'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            ? 'border-[#97C719] text-[#55720C]'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         <Wrench size={14} />
@@ -52,8 +51,8 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                         type="button"
                         onClick={() => setActiveTab('equipos')}
                         className={`pb-2 transition-colors flex items-center gap-1.5 border-b-2 cursor-pointer ${activeTab === 'equipos'
-                                ? 'border-[#97C719] text-[#55720C]'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            ? 'border-[#97C719] text-[#55720C]'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         <Laptop size={14} />

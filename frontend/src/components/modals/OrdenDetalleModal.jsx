@@ -1,4 +1,3 @@
-// src/components/modals/OrdenDetalleModal.jsx
 import { Wrench, User, Laptop, Calendar, AlertCircle, Clock, CheckCircle2, FileText } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
