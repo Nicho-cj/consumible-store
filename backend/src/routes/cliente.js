@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { validacionCliente, validacionParcialCliente } from "../schemas/clienteSchema.js";
+import { validate, validatePartial } from "../middlewares/validate.js";
+import { clienteSchema } from "../schemas/clienteSchema.js";
 
 export const clientesRouter = Router()
 
@@ -8,15 +9,10 @@ clientesRouter.get("/", (req, res) => {
 
 });
 
-clientesRouter.post("/", (req, res) => {
-     const resultado = validacionCliente(req.body)
-     console.log(resultado.error);
+clientesRouter.post("/", validate(clienteSchema) )
 
-     if (resultado.error) {
-          return res.status(400).json({error: resultado.error.message})
-     }
-});
+clientesRouter.patch("/:identificacion", validatePartial(clienteSchema),)
 
-clientesRouter.get("/:id", (req, res) => {
-
+clientesRouter.delete("/", (req, res) => {
+     console.log("se hizo una petición GET");
 });

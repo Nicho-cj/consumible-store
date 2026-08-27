@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const ordenServicioSchema = z.object({
+export const ordenServicioSchema = z.object({
   codigo_orden: z.string().min(1, 'Requerido').max(20, 'Máximo 20 caracteres'),
   fecha_ingreso: z.coerce.date().default(() => new Date()),
   tipo_servicio: z.string().min(1, 'Requerido').max(40, 'Máximo 40 caracteres'),     //   OBSERVACIÓN
@@ -13,11 +13,3 @@ const ordenServicioSchema = z.object({
   id_usuario_recep: z.number().int().positive('ID de usuario inválido'),
   id_tecnico: z.number().int().positive('ID de técnico inválido'),
 });
-
-export function validacionOrden ({input}) {
-     return ordenServicioSchema.safeParse(input)
-}
-
-export function validacionParcialOrden ({input}) {
-     return ordenServicioSchema.partial().safeParse(input)
-}
