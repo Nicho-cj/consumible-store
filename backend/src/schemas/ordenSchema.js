@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ordenServicioSchema = z.object({
+export const ordenSchema = z.object({
   codigo_orden: z.string().min(1, 'Requerido').max(20, 'Máximo 20 caracteres'),
   fecha_ingreso: z.coerce.date().default(() => new Date()),
   tipo_servicio: z.string().min(1, 'Requerido').max(40, 'Máximo 40 caracteres'),     //   OBSERVACIÓN

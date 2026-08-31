@@ -1,45 +1,46 @@
 CREATE TABLE cliente (
     id_cliente          SERIAL PRIMARY KEY,
-    identificacion      VARCHAR(12) NOT NULL UNIQUE,
-    nombre              VARCHAR(100),
-    telefono            VARCHAR(20),
+    ci_rif              VARCHAR(12) NOT NULL UNIQUE,
+    nombre_completo     VARCHAR(60),
+    telefono            VARCHAR(15),
     direccion           TEXT
 );
 
 CREATE TABLE equipo (
     id_equipo   SERIAL PRIMARY KEY,
-    nro_serial  VARCHAR(50) NOT NULL UNIQUE,
-    marca       VARCHAR(50) NOT NULL,
-    modelo      VARCHAR(50) NOT NULL,
+    nro_serial  VARCHAR(30) NOT NULL UNIQUE,
+    marca       VARCHAR(60) NOT NULL,
+    modelo      VARCHAR(60) NOT NULL,
     descripcion TEXT
 );
 
 CREATE TABLE usuario (
     id_usuario      SERIAL PRIMARY KEY,
-    nombre          VARCHAR(80) NOT NULL,
+    nombre          VARCHAR(60) NOT NULL,
     rol             VARCHAR(30) NOT NULL,
-    activo          BOOLEAN NOT NULL DEFAULT TRUE
+    activo          BOOLEAN NOT NULL DEFAULT TRUE,
+    contraseña      VARCHAR(60)
 );
 
 CREATE TABLE tecnico (
-    id_tecnico  SERIAL PRIMARY KEY NOT NULL UNIQUE,
-    nombre      VARCHAR(80) NOT NULL,
+    id_tecnico  SERIAL PRIMARY KEY,
+    nombre      VARCHAR(60) NOT NULL,
     activo      BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE orden_servicio (
     id_orden            SERIAL PRIMARY KEY,
-    codigo_orden        VARCHAR(20) NOT NULL UNIQUE,
+    codigo_orden        VARCHAR(15) NOT NULL UNIQUE,
     fecha_ingreso       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     tipo_servicio       VARCHAR(40) NOT NULL,
     falla_reportada     TEXT NOT NULL,
-    contador_inicio     INTEGER NOT NULL,
+    contador_inicio     INTEGER NULL,
     cotizacion_aprobada BOOLEAN DEFAULT NULL,
     monto_cobro         NUMERIC(10, 2),
     id_cliente          INTEGER NOT NULL,
     id_equipo           INTEGER NOT NULL,
     id_usuario_recep    INTEGER NOT NULL,
-    id_tecnico          INTEGER NOT NULL,
+    id_tecnico          INTEGER,
 
     CONSTRAINT fk_orden_cliente
         FOREIGN KEY (id_cliente)

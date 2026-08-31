@@ -5,14 +5,25 @@ import { clienteSchema } from "../schemas/clienteSchema.js";
 export const clientesRouter = Router()
 
 clientesRouter.get("/", (req, res) => {
-     console.log("se hizo una petición GET");
-
+     console.log("TODOS LOS CLIENTES");
 });
 
-clientesRouter.post("/", validate(clienteSchema) )
+clientesRouter.get("/:id", (req, res) => {
+     console.log("CLIENTE EN ESPECÍFICO");
+});
 
-clientesRouter.patch("/:identificacion", validatePartial(clienteSchema),)
+clientesRouter.get("/:id/equipos", (req, res) => {
+     console.log("EQUIPOS ENLAZADOS A UN CLIENTE ESPECÍFICO");
+});
 
-clientesRouter.delete("/", (req, res) => {
-     console.log("se hizo una petición GET");
+clientesRouter.get("/:id/ordenes", (req, res) => {
+     console.log("ORDENES DE UN CLIENTE ESPECÍFICO");
+});
+
+clientesRouter.post("/", validate(clienteSchema) )     // REGISTRA NUEVO CLIENTES
+
+clientesRouter.put("/:id", validatePartial(clienteSchema),)  // MODIFICA CLIENTE EN ESPECÍFICO
+
+clientesRouter.delete("/:id", (req, res) => {
+     console.log("ELIMINA UN CLIENTE EN ESPECÍFICO");
 });

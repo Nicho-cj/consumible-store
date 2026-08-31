@@ -10,7 +10,12 @@ const pool = new Pool({
 });
 
 pool.on('connect' , () => {
-     console.log('Base de datos conectada');
+     console.log(`Base de datos conectada ( ${process.env.DB_HOST}:${process.env.DB_PORT} )`);
 });
 
-module.exports = pool;
+// pool.on('error', (err, client) => {
+//   console.error('Error inesperado en un cliente inactivo', err);
+//   process.exit(-1);
+// });
+
+export const query = (text, params) => pool.query(text, params);
