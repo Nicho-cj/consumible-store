@@ -91,21 +91,6 @@ export const mockLiquidacionesData = [
         montoTotal: 40.0,
         estado: ORDER_STATUS.ENTREGADO
     },
-    {
-        id: 7,
-        codigo: 'ORD-2026-012',
-        fechaIngreso: '2026-08-22',
-        fechaCierre: '2026-08-25',
-        tecnico: 'Jesús Saavedra',
-        cliente: 'Clínica Guayana',
-        equipo: 'Zebra ZD220',
-        serial: 'SER-776655',
-        tipoServicio: 'Mantenimiento Preventivo',
-        trabajoRealizado: 'Limpieza de cabezal térmico y calibración de sensor de etiquetas',
-        repuestosUsados: 'Ninguno',
-        montoTotal: 30.0,
-        estado: ORDER_STATUS.ENTREGADO
-    }
 ];
 
 export const mockAuditLogsData = [

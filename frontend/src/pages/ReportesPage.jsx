@@ -456,25 +456,6 @@ const ReportesPage = () => {
                     </div>
                 </div>
             )}
-
-            <div className="grid grid-cols-2 gap-12 mt-10 pt-4 text-xs text-center border-t border-slate-300">
-                <div className="pt-2">
-                    <div className="w-48 border-t border-slate-800 mx-auto mb-1"></div>
-                    <p className="font-bold text-slate-900">Administración / Recepción</p>
-                    <p className="text-[10px] text-slate-500">Consumible Store, C.A.</p>
-                </div>
-                <div className="pt-2">
-                    <div className="w-48 border-t border-slate-800 mx-auto mb-1"></div>
-                    <p className="font-bold text-slate-900">
-                        {selectedTechnician === 'ALL' ? 'Técnico Responsable' : selectedTechnician}
-                    </p>
-                    <p className="text-[10px] text-slate-500">Conformidad de Servicios</p>
-                </div>
-            </div>
-
-            <div className="text-center text-[9px] text-slate-400 mt-6">
-                Documento administrativo para control de liquidación y servicios de taller. Consumible Store, C.A.
-            </div>
         </div>
     );
 
