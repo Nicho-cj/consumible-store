@@ -40,13 +40,14 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     const [observaciones, setObservaciones] = useState('');
     const [equipoEncontrado, setEquipoEncontrado] = useState(false);
 
+    // Estado Asignación
+    const [tecnicoId, setTecnicoId] = useState('');
 
     // Sanitización en tiempo real al tipear el documento
     const handleNumeroDocChange = (e) => {
         setNumeroDoc(sanitizeDocumentNumber(e.target.value));
     };
 
-    // Buscar Cliente por Cédula/RIF
     // Buscar Cliente por Cédula/RIF
     const handleSearchCliente = () => {
         const fullCedula = `${tipoDoc}-${numeroDoc}`.trim();
@@ -103,6 +104,7 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
         setFalla('');
         setObservaciones('');
         setEquipoEncontrado(false);
+        setTecnicoId('');
     };
 
     const handleClose = () => {
@@ -118,7 +120,8 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
 
         const nuevaOrden = {
             cliente: { cedulaRif: cedulaRifCompleta, nombre, telefono: telefonoCompleto, direccion },
-            equipo: { serial, marca, modelo, falla, observaciones }
+            equipo: { serial, marca, modelo, falla, observaciones },
+            tecnicoId
         };
         onSubmit(nuevaOrden);
         resetForm();
@@ -126,7 +129,7 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Registrar Nueva Órden de Servicio" maxWidth="max-w-3xl">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Registrar Nueva Orden de Servicio" maxWidth="max-w-3xl">
             <form onSubmit={handleSubmit} className="space-y-6">
 
                 {/* SECCIÓN: Datos del Cliente */}
@@ -295,6 +298,29 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                             <CheckCircle2 size={14} /> Historial del equipo encontrado y autocompletado.
                         </p>
                     )}
+                </div>
+
+                {/* SECCIÓN: Asignación de Técnico */}
+                <div>
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-3 border-b border-[#E2E8F0] pb-1">
+                        3. Asignación Inicial
+                    </h4>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-slate-700">
+                            Asignar Técnico Responsable
+                        </label>
+                        <select
+                            name="tecnicoId"
+                            value={tecnicoId}
+                            onChange={(e) => setTecnicoId(e.target.value)}
+                            className="w-full bg-white text-xs font-medium text-slate-800 p-2.5 border border-[#E2E8F0] rounded-md outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all"
+                        >
+                            <option value="">-- Seleccionar Técnico (Opcional) --</option>
+                            <option value="1">Dario Jose Jimenez (Técnico)</option>
+                            <option value="2">Jesús Saavedra (Técnico)</option>
+                            <option value="3">Hector Luis Rodriguez (Técnico)</option>
+                        </select>
+                    </div>
                 </div>
 
                 {/* Acciones Finales del Formulario */}

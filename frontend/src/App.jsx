@@ -4,8 +4,7 @@ import NewOrderModal from './components/modals/NewOrderModal';
 import OrdenEnvioModal from './components/modals/OrdenEnvioModal'; // <-- 1. Importar
 
 function App() {
-    const [currentRole, setCurrentRole] = useState('ADMIN_RECEPCION');
-
+    const [currentRole, setCurrentRole] = useState(null);
     // Control modal de Nueva Orden
     const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
 
