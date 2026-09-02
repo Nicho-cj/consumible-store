@@ -7,9 +7,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "node --watch ./src/app.js",
-    "start": "node ./src/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --watch app.js",
+    "start": "node app.js",
+    "test": "node --watch test.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
