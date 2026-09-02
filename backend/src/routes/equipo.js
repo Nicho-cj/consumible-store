@@ -4,26 +4,17 @@ import { equipoSchema } from "../schemas/equipoSchema.js";
 
 export const equiposRouter = Router()
 
-equiposRouter.get("/", (req, res) => {
-     console.log("TODOS LOS EQUIPOS");
-});
+equiposRouter.route("/")
+     .get((req, res) => res.status(200).json({"status": "ta'bien"}))
+     .post(validate(equipoSchema));
 
-equiposRouter.get("/:serial", (req, res) => {
-     console.log("EQUIPO EN ESPECÍFICO");
-});
+equiposRouter.route("/:serial")
+     .get((req, res) => res.status(200).json({"status": "ta'bien"}))
+     .put(validate(equipoSchema))
+     .patch(validatePartial(equipoSchema))
+     .delete((req, res) => res.status(200).json({"status": "ta'bien"}));
 
-equiposRouter.get("/:serial/clientes", (req, res) => {
-     console.log("CLIENTES ENLAZADOS A UN EQUIPO ESPECÍFICO");
-});
+equiposRouter.get("/:serial/clientes", (req, res) => res.status(200).json({"status": "ta'bien"}));
 
-equiposRouter.get("/:serial/ordenes", (req, res) => {
-     console.log("ORDENES DE UN EQUIPOS ESPECÍFICO");
-});
+equiposRouter.get("/:serial/ordenes", (req, res) => res.status(200).json({"status": "ta'bien"}));
 
-equiposRouter.post("/", validate(equipoSchema) )     // REGISTRA NUEVO EQUIPO
-
-equiposRouter.put("/:serial", validatePartial(equipoSchema),)  // MODIFICA EQUIPO EN ESPECÍFICO
-
-equiposRouter.delete("/:serial", (req, res) => {
-     console.log("ELIMINA UN CLIENTE EN ESPECÍFICO");
-});

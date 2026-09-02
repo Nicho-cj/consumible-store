@@ -4,24 +4,14 @@ import { tecnicoSchema } from "../schemas/tecnicoSchema.js";
 
 export const tecnicosRouter = Router()
 
-tecnicosRouter.get("/", (req, res) => {
-     console.log("TODOS LOS TECNICOS");
-});
+tecnicosRouter.route("/")
+     .get((req, res) => res.status(200).json({"status": "ta'bien"}))
+     .post(validate(tecnicoSchema));
 
-tecnicosRouter.get("/:id", (req, res) => {
-     console.log("TECNICO EN ESPECÍFICO");
-});
+tecnicosRouter.route("/:id")
+     .get((req, res) => res.status(200).json({"status": "ta'bien"}))
+     .put(validate(tecnicoSchema))
+     .patch(validatePartial(tecnicoSchema))
+     .delete((req, res) => res.status(200).json({"status": "ta'bien"}));
 
-tecnicosRouter.get("/:id/ordenes", (req, res) => {
-     console.log("ORDENES ENLAZADOS A UN TECNICO ESPECÍFICO");
-});
-
-tecnicosRouter.post("/", validate(tecnicoSchema) )     // REGISTRA NUEVO TECNICO
-
-tecnicosRouter.put("/:id", validate(tecnicoSchema),)  // MODIFICA TECNICO EN ESPECÍFICO
-
-tecnicosRouter.patch("/:id/estado", validatePartial(tecnicoSchema),)  // MODIFICA TECNICO EN ESPECÍFICO
-
-tecnicosRouter.delete("/:id", (req, res) => {
-     console.log("ELIMINA UN TECNICO ESPECÍFICO");
-});
+tecnicosRouter.get("/:id/ordenes", ((req, res) => res.status(200).json({"status": "ta'bien"})));
