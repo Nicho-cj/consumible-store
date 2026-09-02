@@ -6,11 +6,6 @@ export class ClienteModel {
         return result.rows;
     }
 
-    static async getById(id_cliente) {
-        const result = await query('SELECT * FROM cliente WHERE id_cliente = $1', [id_cliente]);
-        return result.rows[0];
-    }
-
     static async create(data) {
         const { ci_rif, nombre_completo, telefono, direccion } = data;
         const result = await query(
@@ -20,6 +15,12 @@ export class ClienteModel {
         );
         return result.rows[0];
     }
+
+    static async getById(id_cliente) {
+        const result = await query('SELECT * FROM cliente WHERE id_cliente = $1', [id_cliente]);
+        return result.rows[0];
+    }
+
 
     static async update(id_cliente, data) {
         const { ci_rif, nombre_completo, telefono, direccion } = data;

@@ -7,12 +7,12 @@ export const clientesRouter = Router()
 
 clientesRouter.route("/")
      .get(ClienteController.getAll)
-     .post(validate(clienteSchema), ClienteController);
+     .post(validate(clienteSchema), ClienteController.create);
 
 clientesRouter.route("/:id")
      .get(ClienteController.getById)
      .put(validate(clienteSchema), ClienteController.update)
-     .patch(validatePartial(clienteSchema), ClienteController.update)
+     .patch(validatePartial(clienteSchema), ClienteController.patch)
      .delete( ClienteController.delete);
 
 clientesRouter.get("/:id/equipos", ClienteController.getEquipos);

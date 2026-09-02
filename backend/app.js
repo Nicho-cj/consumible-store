@@ -17,6 +17,7 @@ import { equiposRouter } from './src/routes/equipo.js'
 import { tecnicosRouter } from './src/routes/tecnico.js'
 import { ordenesRouter } from './src/routes/ordenServicio.js'
 import { usuariosRouter } from "./src/routes/usuario.js";
+import { AppError } from './src/utils/appError.js';
 
 //  ENDPOINTS
 app.use('/clientes', clientesRouter)
@@ -25,9 +26,14 @@ app.use('/tecnicos', tecnicosRouter)
 app.use('/ordenes', ordenesRouter)
 app.use('/usuarios', usuariosRouter)
 
+//  MENSAJE POR DEFECTO
+app.use((rep, res) => { res.status(404).json({
+  "status":"error",
+  "message":"API inexistente"
+}) })
+
 //  MANEJO DE ERRORES
 app.use(errorHandler)
-
 
 app.listen(PORT, () => {
   console.log(`Backend funcionando ( http://localhost:${PORT} )`)

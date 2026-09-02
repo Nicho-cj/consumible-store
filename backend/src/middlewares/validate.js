@@ -6,8 +6,9 @@ export const validate = (schema) => (req, res, next) => {
           );
 
           return res.status(400).json({
-               status: 'error de validación',
-               errors: formattedErrors,
+               'status': 'error',
+               'message': 'Error de validación',
+               'errors': formattedErrors,
           });
      }
      req.body = result.data;
@@ -20,12 +21,11 @@ export const validatePartial = (schema) => (req, res, next) => {
           const formattedErrors = Object.fromEntries(
                result.error.issues.map((issue) => [issue.path[0], issue.message])
           );
-          console.log(formattedErrors);
 
           return res.status(400).json({
-               status: 'error',
-               message: 'Error de validación parcial',
-               errors: formattedErrors,
+               'status': 'error',
+               'message': 'Error de validación parcial',
+               'errors': formattedErrors,
           });
      }
      req.body = result.data;
