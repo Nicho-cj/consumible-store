@@ -8,6 +8,8 @@ import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
 import { normalizeText } from '../utils/text';
 import { mockEquipos } from '../data/equiposData';
+import { getHistorialBySerial } from '../data/ordenesData';
+import StatusBadge from '../components/common/StatusBadge';
 
 const EquiposPage = () => {
     const [equipos, setEquipos] = useState(mockEquipos);
@@ -131,13 +133,16 @@ const EquiposPage = () => {
             )
         },
         {
-            key: 'historial',
+            key: 'servicios',
             label: 'Servicios',
-            render: (row) => (
-                <span className="bg-[#F3F7E9] text-[#55720C] font-semibold px-2 py-0.5 rounded text-[11px]">
-                    {row.historial.length} {row.historial.length === 1 ? 'Servicio' : 'Servicios'}
-                </span>
-            )
+            render: (row) => {
+                const count = getHistorialBySerial(row.serial).length;
+                return (
+                    <span className="bg-[#F3F7E9] text-[#55720C] font-semibold px-2 py-0.5 rounded text-[11px]">
+                        {count} {count === 1 ? 'Servicio' : 'Servicios'}
+                    </span>
+                );
+            }
         },
         {
             key: 'acciones',
@@ -153,21 +158,6 @@ const EquiposPage = () => {
                     <span>Expediente</span>
                 </Button>
             )
-        }
-    ];
-
-    // Columnas para el modal de Historial (RF-04)
-    const historyColumns = [
-        { key: 'orden', label: 'N° Orden', className: 'font-mono font-bold text-slate-800' },
-        { key: 'fecha', label: 'Fecha' },
-        { key: 'tipo', label: 'Tipo' },
-        { key: 'tecnico', label: 'Técnico' },
-        { key: 'diagnostico', label: 'Diagnóstico y Solución' },
-        { key: 'repuestos', label: 'Repuestos' },
-        {
-            key: 'contador',
-            label: 'Contador',
-            render: (r) => <span className="font-mono">{r.contador?.toLocaleString()} pág.</span>
         }
     ];
 
@@ -273,48 +263,81 @@ const EquiposPage = () => {
                 title={`Expediente Técnico: ${selectedEquipment?.serial || ''}`}
                 maxWidth="max-w-4xl"
             >
-                {selectedEquipment && (
-                    <div className="space-y-4">
-                        <div className="p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                            <div>
-                                <span className="text-slate-400 block font-medium">Marca y Modelo</span>
-                                <span className="font-bold text-slate-800">{selectedEquipment.marca} {selectedEquipment.modelo}</span>
+                {selectedEquipment && (() => {
+                    const historial = getHistorialBySerial(selectedEquipment.serial);
+                    return (
+                        <div className="space-y-4">
+                            <div className="p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Marca y Modelo</span>
+                                    <span className="font-bold text-slate-800">{selectedEquipment.marca} {selectedEquipment.modelo}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Tipo</span>
+                                    <span className="font-semibold text-slate-700">{selectedEquipment.tipo}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Cliente</span>
+                                    <span className="font-semibold text-slate-700">{selectedEquipment.cliente}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Contador Total</span>
+                                    <span className="font-mono font-bold text-[#55720C] bg-[#F3F7E9] px-2 py-0.5 rounded">
+                                        {selectedEquipment.contadorBN?.toLocaleString()} pág.
+                                    </span>
+                                </div>
                             </div>
-                            <div>
-                                <span className="text-slate-400 block font-medium">Tipo</span>
-                                <span className="font-semibold text-slate-700">{selectedEquipment.tipo}</span>
-                            </div>
-                            <div>
-                                <span className="text-slate-400 block font-medium">Cliente</span>
-                                <span className="font-semibold text-slate-700">{selectedEquipment.cliente}</span>
-                            </div>
-                            <div>
-                                <span className="text-slate-400 block font-medium">Contador Total</span>
-                                <span className="font-mono font-bold text-[#55720C] bg-[#F3F7E9] px-2 py-0.5 rounded">
-                                    {selectedEquipment.contadorBN?.toLocaleString()} pág.
-                                </span>
-                            </div>
-                        </div>
 
-                        <div>
-                            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                                <History size={14} className="text-[#97C719]" />
-                                Historial de Reparaciones y Mantenimientos
-                            </h4>
-                            <Table
-                                columns={historyColumns}
-                                data={selectedEquipment.historial}
-                                emptyMessage="Este equipo aún no tiene reparaciones o servicios registrados."
-                            />
-                        </div>
+                            <div>
+                                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                    <History size={14} className="text-[#97C719]" />
+                                    Historial de Reparaciones y Mantenimientos ({historial.length})
+                                </h4>
+                                {historial.length === 0 ? (
+                                    <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-[#E2E8F0]">
+                                        <History className="mx-auto size-8 text-slate-400 mb-2" />
+                                        <p className="text-xs text-slate-500 font-medium">
+                                            Este equipo aún no tiene reparaciones o servicios registrados.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
+                                        <table className="w-full text-left text-xs text-slate-700">
+                                            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-[#E2E8F0]">
+                                                <tr>
+                                                    <th className="p-2.5">N° Orden</th>
+                                                    <th className="p-2.5">Fecha</th>
+                                                    <th className="p-2.5">Técnico</th>
+                                                    <th className="p-2.5">Diagnóstico</th>
+                                                    <th className="p-2.5">Repuestos</th>
+                                                    <th className="p-2.5 text-right">Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-[#E2E8F0]">
+                                                {historial.map((item, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                                        <td className="p-2.5 font-mono font-bold text-slate-800">{item.orden}</td>
+                                                        <td className="p-2.5 text-slate-500">{item.fecha}</td>
+                                                        <td className="p-2.5 font-medium text-slate-700">{item.tecnico}</td>
+                                                        <td className="p-2.5 text-slate-600 max-w-xs truncate" title={item.diagnostico}>{item.diagnostico}</td>
+                                                        <td className="p-2.5 text-slate-500">{item.repuestos}</td>
+                                                        <td className="p-2.5 text-right"><StatusBadge status={item.estado} /></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
 
-                        <div className="flex justify-end pt-2">
-                            <Button variant="secondary" onClick={() => setSelectedEquipment(null)}>
-                                Cerrar Expediente
-                            </Button>
+                            <div className="flex justify-end pt-2">
+                                <Button variant="secondary" onClick={() => setSelectedEquipment(null)}>
+                                    Cerrar Expediente
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
             </Modal>
         </div>
     );

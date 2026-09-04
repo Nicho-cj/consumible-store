@@ -25,7 +25,7 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
         serviceType: order?.tipoServicio || 'Revisión y Diagnóstico',
         initialCounter: order?.contadorInicial || order?.contadorBN || 0,
         reportedFault: order?.equipo?.falla || order?.falla || 'Revisión general',
-        technician: order?.tecnico || 'Asignado en Taller',
+        technician: order?.tecnicoAsignado || order?.tecnico || 'Asignado en Taller',
         observaciones: order?.equipo?.observaciones || order?.observaciones || 'Ninguna'
     };
 

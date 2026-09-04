@@ -1,122 +1,323 @@
-import { Wrench, User, Laptop, Calendar, AlertCircle, Clock, CheckCircle2, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, DollarSign, Hash } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import StatusBadge from '../common/StatusBadge';
+import { ORDER_STATUS, STATUS_FLOW, STATUS_CONFIG } from '../../utils/status';
 
-const OrdenDetalleModal = ({ isOpen, onClose, order }) => {
+const FlowProgress = ({ currentStatus }) => {
+    const currentIdx = STATUS_FLOW.indexOf(currentStatus);
+    const isCancelled = currentStatus === ORDER_STATUS.CANCELADO;
+
+    return (
+        <div className="flex items-center gap-1 w-full py-3">
+            {STATUS_FLOW.map((status, idx) => {
+                const isCompleted = idx < currentIdx;
+                const isCurrent = idx === currentIdx;
+                const config = STATUS_CONFIG[status];
+
+                return (
+                    <div key={status} className="flex items-center flex-1">
+                        <div className="flex flex-col items-center flex-1">
+                            <div
+                                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
+                                    isCompleted
+                                        ? 'bg-[#55720C] border-[#55720C] text-white'
+                                        : isCurrent
+                                            ? 'bg-white border-[#55720C] text-[#55720C] shadow-md'
+                                            : 'bg-slate-100 border-slate-300 text-slate-400'
+                                }`}
+                            >
+                                {isCompleted ? <CheckCircle2 size={14} /> : idx + 1}
+                            </div>
+                            <span className={`text-[9px] font-semibold mt-1 text-center leading-tight ${
+                                isCurrent ? 'text-[#55720C]' : isCompleted ? 'text-slate-600' : 'text-slate-400'
+                            }`}>
+                                {config?.label || status}
+                            </span>
+                        </div>
+                        {idx < STATUS_FLOW.length - 1 && (
+                            <div className={`h-0.5 w-full mx-1 rounded ${
+                                idx < currentIdx ? 'bg-[#55720C]' : 'bg-slate-200'
+                            }`} />
+                        )}
+                    </div>
+                );
+            })}
+            {isCancelled && (
+                <>
+                    <div className="h-0.5 w-full mx-1 rounded bg-red-300" />
+                    <div className="flex flex-col items-center">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 bg-red-500 border-red-500 text-white">
+                            <XCircle size={14} />
+                        </div>
+                        <span className="text-[9px] font-semibold mt-1 text-red-500">Cancelado</span>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
+    const [showCloseForm, setShowCloseForm] = useState(false);
+    const [contadorFinal, setContadorFinal] = useState('');
+    const [montoCobro, setMontoCobro] = useState('');
+    const [closeError, setCloseError] = useState('');
+
     if (!order) return null;
 
-    // Configuración visual según el estatus de la orden
-    const statusConfig = {
-        'En Espera': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: Clock },
-        'En Diagnóstico': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: Wrench },
-        'Reparado': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: CheckCircle2 },
-        'Entregado': { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300', icon: CheckCircle2 },
+    const currentStatus = order.estado || ORDER_STATUS.REGISTRADO;
+    const today = new Date().toISOString().slice(0, 10);
+
+    const handleApprove = () => {
+        if (!onUpdateOrder) return;
+        onUpdateOrder({ ...order, estado: ORDER_STATUS.PROCESO_TECNICO });
     };
 
-    const currentStatus = statusConfig[order.estatus] || statusConfig['En Espera'];
-    const StatusIcon = currentStatus.icon;
+    const handleReject = () => {
+        if (!onUpdateOrder) return;
+        onUpdateOrder({ ...order, estado: ORDER_STATUS.CANCELADO });
+    };
+
+    const handleOpenCloseForm = () => {
+        setShowCloseForm(true);
+        setContadorFinal(order.contadorInicial || '');
+        setMontoCobro('');
+        setCloseError('');
+    };
+
+    const handleDeliver = () => {
+        const cnt = parseInt(contadorFinal, 10);
+        const monto = parseFloat(montoCobro);
+
+        if (isNaN(cnt) || cnt < 0) {
+            setCloseError('El contador final debe ser un número válido.');
+            return;
+        }
+        if (order.contadorInicial && cnt < order.contadorInicial) {
+            setCloseError(`El contador final (${cnt}) no puede ser menor al inicial (${order.contadorInicial}).`);
+            return;
+        }
+        if (isNaN(monto) || monto < 0) {
+            setCloseError('El monto de cobro debe ser un número válido.');
+            return;
+        }
+
+        if (onUpdateOrder) {
+            onUpdateOrder({
+                ...order,
+                estado: ORDER_STATUS.ENTREGADO,
+                contadorFinal: cnt,
+                montoCobro: monto,
+                fechaEntregado: today,
+            });
+        }
+        setShowCloseForm(false);
+    };
 
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`Orden de Servicio #${order.numeroOrden || order.codigo || order.id}`}
+            title={`Orden de Servicio #${order.codigo || order.id}`}
+            maxWidth="max-w-3xl"
         >
             <div className="space-y-5">
-                {/* Cabecera de Estatus y Fecha */}
-                <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg">
+                <FlowProgress currentStatus={currentStatus} />
+
+                <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-500">Estatus:</span>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${currentStatus.bg} ${currentStatus.text} ${currentStatus.border}`}>
-                            <StatusIcon size={13} />
-                            {order.estatus || 'En Espera'}
-                        </span>
+                        <StatusBadge status={currentStatus} />
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <Calendar size={13} />
-                        <span>Ingreso: <strong className="text-slate-700">{order.fechaIngreso || order.fecha || 'N/A'}</strong></span>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                        <div className="flex items-center gap-1">
+                            <Calendar size={13} />
+                            <span>Ingreso: <strong className="text-slate-700">{order.fechaIngreso || 'N/A'}</strong></span>
+                        </div>
+                        {order.fechaEntregado && (
+                            <div className="flex items-center gap-1">
+                                <Calendar size={13} />
+                                <span>Entregado: <strong className="text-slate-700">{order.fechaEntregado}</strong></span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Sección 1: Información del Cliente */}
                 <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 border-b border-[#E2E8F0] pb-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 border-b border-slate-200 pb-1">
                         <User size={14} className="text-[#55720C]" />
                         <span>DATOS DEL CLIENTE</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
                         <div>
-                            <span className="text-slate-400 block font-medium">Nombre / Razon Social</span>
-                            <span className="font-semibold text-slate-800">{order.cliente?.nombre || order.clienteNombre || 'Cliente No Registrado'}</span>
+                            <span className="text-slate-400 block font-medium">Nombre / Razón Social</span>
+                            <span className="font-semibold text-slate-800">{order.clienteNombre || 'Cliente No Registrado'}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Cédula / RIF</span>
-                            <span className="font-mono text-slate-700">{order.cliente?.cedulaRif || order.clienteDocumento || 'N/A'}</span>
+                            <span className="font-mono text-slate-700">{order.clienteCedulaRif || 'N/A'}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Teléfono Contacto</span>
-                            <span className="font-mono text-slate-700">{order.cliente?.telefono || order.clienteTelefono || 'N/A'}</span>
+                            <span className="font-mono text-slate-700">{order.clienteTelefono || 'N/A'}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Correo Electrónico</span>
-                            <span className="text-slate-700">{order.cliente?.email || 'N/A'}</span>
+                            <span className="text-slate-700">{order.clienteEmail || 'N/A'}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Sección 2: Información del Equipo */}
                 <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 border-b border-[#E2E8F0] pb-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 border-b border-slate-200 pb-1">
                         <Laptop size={14} className="text-[#55720C]" />
                         <span>DATOS DEL EQUIPO</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
                         <div>
                             <span className="text-slate-400 block font-medium">Equipo / Tipo</span>
-                            <span className="font-semibold text-slate-800">{order.equipo?.tipo || order.tipoEquipo || 'Impresora / Fotocopiadora'}</span>
+                            <span className="font-semibold text-slate-800">{order.tipoEquipo || 'N/A'}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Marca y Modelo</span>
-                            <span className="font-semibold text-slate-800">{order.equipo?.modelo || order.equipoModelo || 'N/A'}</span>
+                            <span className="font-semibold text-slate-800">{order.equipoModelo || 'N/A'}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Número de Serie</span>
-                            <span className="font-mono text-slate-700">{order.equipo?.serie || order.equipoSerie || 'N/A'}</span>
+                            <span className="font-mono text-slate-700">{order.equipoSerie || 'N/A'}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Sección 3: Falla Reportada y Accesorios */}
                 <div className="space-y-3 text-xs">
-                    <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-lg space-y-1">
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
                         <div className="flex items-center gap-1.5 font-bold text-amber-800">
                             <AlertCircle size={14} />
                             <span>Falla Reportada por el Cliente</span>
                         </div>
                         <p className="text-slate-700 leading-relaxed">
-                            {order.fallaReportada || order.descripcionFalla || 'No se especificó detalle de la falla al ingresar.'}
+                            {order.fallaReportada || 'No se especificó detalle de la falla al ingresar.'}
                         </p>
                     </div>
 
+                    {order.diagnostico && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-blue-800">
+                                <Wrench size={14} />
+                                <span>Diagnóstico Técnico</span>
+                            </div>
+                            <p className="text-slate-700 leading-relaxed">{order.diagnostico}</p>
+                        </div>
+                    )}
+
+                    {order.repuestosUsados && order.repuestosUsados.length > 0 && (
+                        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                            <span className="text-purple-700 font-bold block mb-1">Repuestos Utilizados:</span>
+                            <ul className="list-disc list-inside text-slate-700">
+                                {order.repuestosUsados.map((r, i) => (
+                                    <li key={i}>{r.nombre} {r.cantidad > 1 ? `(x${r.cantidad})` : ''}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
                     {order.accesorios && (
-                        <div className="p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg">
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                             <span className="text-slate-400 font-medium block mb-0.5">Accesorios / Observaciones de Recepción:</span>
                             <p className="text-slate-700">{order.accesorios}</p>
                         </div>
                     )}
                 </div>
 
-                {/* Sección 4: Técnico Asignado */}
-                <div className="flex items-center justify-between p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg text-xs">
+                <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                     <div className="flex items-center gap-2">
                         <Wrench size={14} className="text-slate-400" />
                         <span className="text-slate-500">Técnico Asignado:</span>
                         <span className="font-semibold text-slate-800">{order.tecnicoAsignado || 'Sin Asignar'}</span>
                     </div>
+                    {order.contadorInicial > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Hash size={14} className="text-slate-400" />
+                            <span className="text-slate-500">Contador Inicial:</span>
+                            <span className="font-mono font-semibold text-slate-800">{order.contadorInicial.toLocaleString()}</span>
+                        </div>
+                    )}
                 </div>
 
-                {/* Footer */}
-                <div className="flex justify-end pt-3 border-t border-[#E2E8F0]">
+                {currentStatus === ORDER_STATUS.SOLUCION_COTIZACION && (
+                    <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-amber-800">
+                            El técnico ha enviado esta orden con diagnóstico. Contacte al cliente para confirmar si aprueba el trabajo.
+                        </p>
+                        <div className="flex gap-3">
+                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleApprove} className="bg-emerald-600 hover:bg-emerald-700">
+                                Cliente Aprobó
+                            </Button>
+                            <Button variant="danger" size="sm" icon={XCircle} onClick={handleReject}>
+                                Cliente Rechazó
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {currentStatus === ORDER_STATUS.LISTO_ENTREGA && !showCloseForm && (
+                    <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-emerald-800">
+                            El technician ha finalizado el trabajo. El equipo está listo para entregar al cliente.
+                        </p>
+                        <Button variant="primary" size="sm" icon={PackageCheck} onClick={handleOpenCloseForm}>
+                            Entregar Equipo al Cliente
+                        </Button>
+                    </div>
+                )}
+
+                {showCloseForm && (
+                    <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-emerald-800">Registrar Entrega del Equipo</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Contador Final de Impresiones</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={contadorFinal}
+                                    onChange={(e) => { setContadorFinal(e.target.value); setCloseError(''); }}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                                />
+                                {order.contadorInicial > 0 && (
+                                    <span className="text-[10px] text-slate-400 mt-1 block">
+                                        Inicial: {order.contadorInicial.toLocaleString()} | Impresiones: {Math.max(0, (parseInt(contadorFinal, 10) || 0) - order.contadorInicial)}
+                                    </span>
+                                )}
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Monto de Cobro ($)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={montoCobro}
+                                    onChange={(e) => { setMontoCobro(e.target.value); setCloseError(''); }}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+                        {closeError && (
+                            <p className="text-xs text-red-600 font-medium bg-red-50 border border-red-200 rounded px-3 py-2">{closeError}</p>
+                        )}
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="secondary" size="sm" onClick={() => setShowCloseForm(false)}>Cancelar</Button>
+                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleDeliver}>
+                                Confirmar Entrega
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex justify-end pt-3 border-t border-slate-200">
                     <Button variant="secondary" onClick={onClose}>
                         Cerrar
                     </Button>

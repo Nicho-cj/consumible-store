@@ -22,8 +22,8 @@ import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
 import { normalizeText } from '../utils/text';
 import { mockLiquidacionesData, mockAuditLogsData } from '../data/reportesData';
+import { mockTecnicos } from '../data/tecnicosData';
 
-// Función para formatear fechas a formato DD/MM/YYYY
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     const parts = dateStr.split('-');
@@ -34,30 +34,21 @@ const formatDate = (dateStr) => {
 };
 
 const ReportesPage = () => {
-    // Referencia e integración para react-to-print
     const contentRef = useRef(null);
     const handlePrintReport = useReactToPrint({
         contentRef: contentRef,
         documentTitle: `Reporte_Liquidacion_Consumible_Store_${new Date().toISOString().slice(0, 10)}`,
     });
 
-    // Pestaña activa: 'LIQUIDACION' | 'LOGS' | 'BACKUP'
     const [activeTab, setActiveTab] = useState('LIQUIDACION');
-
-    // Filtros de Liquidación
     const [selectedTechnician, setSelectedTechnician] = useState('ALL');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-
-    // Estado del modal de Vista Previa
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-    // Filtros de Logs
     const [logSearch, setLogSearch] = useState('');
     const [logModuleFilter, setLogModuleFilter] = useState('ALL');
 
-    // Configuración de Filtros
     const filterFields = [
         {
             id: 'tecnico',
@@ -67,11 +58,7 @@ const ReportesPage = () => {
             onChange: setSelectedTechnician,
             options: [
                 { label: 'Todos los Técnicos', value: 'ALL' },
-                { label: 'Hector Luis Rodriguez', value: 'Hector Luis Rodriguez' },
-                { label: 'Dario Jose Jimenez', value: 'Dario Jose Jimenez' },
-                { label: 'Domingo', value: 'Domingo' },
-                { label: 'Eloy', value: 'Eloy' },
-                { label: 'Jesús Saavedra', value: 'Jesús Saavedra' },
+                ...mockTecnicos.map((t) => ({ label: t.nombre, value: t.nombre })),
             ],
         },
         {
@@ -132,7 +119,6 @@ const ReportesPage = () => {
         }
     };
 
-    // Filtrado de Liquidaciones
     const filteredLiquidaciones = useMemo(() => {
         return mockLiquidacionesData.filter((item) => {
             const matchesTecnico = selectedTechnician === 'ALL' || item.tecnico === selectedTechnician;
@@ -156,7 +142,6 @@ const ReportesPage = () => {
         });
     }, [selectedTechnician, startDate, endDate, searchQuery]);
 
-    // Filtrado de Logs
     const filteredLogs = useMemo(() => {
         return mockAuditLogsData.filter((log) => {
             const term = normalizeText(logSearch);
@@ -172,7 +157,6 @@ const ReportesPage = () => {
         });
     }, [logSearch, logModuleFilter]);
 
-    // Totales Calculados
     const totalFacturado = useMemo(() => {
         return filteredLiquidaciones.reduce((acc, curr) => acc + curr.montoTotal, 0);
     }, [filteredLiquidaciones]);
@@ -183,16 +167,11 @@ const ReportesPage = () => {
             : '0.00';
     }, [filteredLiquidaciones, totalFacturado]);
 
-    // Resumen por Técnico
     const resumenPorTecnico = useMemo(() => {
         const map = {};
         filteredLiquidaciones.forEach((item) => {
             if (!map[item.tecnico]) {
-                map[item.tecnico] = {
-                    nombre: item.tecnico,
-                    servicios: 0,
-                    totalCobrado: 0,
-                };
+                map[item.tecnico] = { nombre: item.tecnico, servicios: 0, totalCobrado: 0 };
             }
             map[item.tecnico].servicios += 1;
             map[item.tecnico].totalCobrado += item.montoTotal;
@@ -200,23 +179,10 @@ const ReportesPage = () => {
         return Object.values(map);
     }, [filteredLiquidaciones]);
 
-    // Columnas de la Tabla de Liquidación
     const liquidacionColumns = [
-        {
-            key: 'codigo',
-            label: 'N° Orden',
-            className: 'font-semibold text-slate-800 font-mono text-xs'
-        },
-        {
-            key: 'tecnico',
-            label: 'Técnico Responsable',
-            className: 'font-medium text-slate-700 text-xs'
-        },
-        {
-            key: 'cliente',
-            label: 'Cliente',
-            className: 'text-slate-700 text-xs font-medium'
-        },
+        { key: 'codigo', label: 'N° Orden', className: 'font-semibold text-slate-800 font-mono text-xs' },
+        { key: 'tecnico', label: 'Técnico Responsable', className: 'font-medium text-slate-700 text-xs' },
+        { key: 'cliente', label: 'Cliente', className: 'text-slate-700 text-xs font-medium' },
         {
             key: 'equipo',
             label: 'Equipo y Serial',
@@ -225,7 +191,7 @@ const ReportesPage = () => {
                     <span className="font-semibold text-slate-800 block text-xs">{row.equipo}</span>
                     <span className="text-[10px] text-slate-500 font-mono">S/N: {row.serial}</span>
                 </div>
-            )
+            ),
         },
         {
             key: 'trabajoRealizado',
@@ -240,13 +206,13 @@ const ReportesPage = () => {
                         </span>
                     )}
                 </div>
-            )
+            ),
         },
         {
             key: 'fechaIngreso',
             label: 'Fecha Ingreso',
             className: 'text-slate-600 font-mono text-xs whitespace-nowrap',
-            render: (row) => formatDate(row.fechaIngreso)
+            render: (row) => formatDate(row.fechaIngreso),
         },
         {
             key: 'montoTotal',
@@ -256,27 +222,14 @@ const ReportesPage = () => {
                 <span className="bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-md border border-emerald-200 font-mono">
                     ${row.montoTotal.toFixed(2)}
                 </span>
-            )
+            ),
         },
     ];
 
-    // Columnas de Logs de Auditoría
     const logColumns = [
-        {
-            key: 'id',
-            label: 'ID Evento',
-            className: 'font-mono text-xs text-slate-500 font-semibold'
-        },
-        {
-            key: 'fecha',
-            label: 'Fecha y Hora',
-            className: 'font-mono text-xs text-slate-600'
-        },
-        {
-            key: 'usuario',
-            label: 'Usuario / Rol',
-            className: 'font-semibold text-slate-800'
-        },
+        { key: 'id', label: 'ID Evento', className: 'font-mono text-xs text-slate-500 font-semibold' },
+        { key: 'fecha', label: 'Fecha y Hora', className: 'font-mono text-xs text-slate-600' },
+        { key: 'usuario', label: 'Usuario / Rol', className: 'font-semibold text-slate-800' },
         {
             key: 'modulo',
             label: 'Módulo',
@@ -284,18 +237,10 @@ const ReportesPage = () => {
                 <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                     {row.modulo}
                 </span>
-            )
+            ),
         },
-        {
-            key: 'accion',
-            label: 'Acción Ejecutada',
-            className: 'font-medium text-slate-800'
-        },
-        {
-            key: 'detalles',
-            label: 'Detalles / Descripción',
-            className: 'text-slate-600 text-xs'
-        }
+        { key: 'accion', label: 'Acción Ejecutada', className: 'font-medium text-slate-800' },
+        { key: 'detalles', label: 'Detalles / Descripción', className: 'text-slate-600 text-xs' },
     ];
 
     const handleDownloadBackup = () => {
@@ -304,51 +249,37 @@ const ReportesPage = () => {
             sistema: 'Consumible Store - Control de Servicio Técnico',
             version: '1.0.0',
             liquidaciones: mockLiquidacionesData,
-            auditLogs: mockAuditLogsData
+            auditLogs: mockAuditLogsData,
         };
-
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `consumible_store_backup_${new Date().toISOString().slice(0, 10)}.json`);
+        downloadAnchor.setAttribute('href', dataStr);
+        downloadAnchor.setAttribute('download', `consumible_store_backup_${new Date().toISOString().slice(0, 10)}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
     };
 
-    // Plantilla formal para la hoja imprimible
     const ReportContent = ({ isModalView = false }) => (
         <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-8'}`}>
             <div className="border-b-2 border-slate-900 pb-4 mb-4">
                 <div className="flex flex-row justify-between items-start">
                     <div>
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-[#97C719] rounded flex items-center justify-center text-white font-bold text-xs border border-black">
-                                CS
-                            </div>
-                            <h1 className="text-base font-black tracking-tight text-slate-900">
-                                CONSUMIBLE STORE, C.A.
-                            </h1>
+                            <div className="w-6 h-6 bg-[#97C719] rounded flex items-center justify-center text-white font-bold text-xs border border-black">CS</div>
+                            <h1 className="text-base font-black tracking-tight text-slate-900">CONSUMIBLE STORE, C.A.</h1>
                         </div>
-                        <p className="text-[11px] text-slate-600 font-medium mt-0.5">
-                            RIF: J-40891234-5 | Soporte y Servicio Técnico Especializado
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                            C.C. Bolívar, Nivel PB, Local 12, Puerto Ordaz, Edo. Bolívar
-                        </p>
+                        <p className="text-[11px] text-slate-600 font-medium mt-0.5">RIF: J-40891234-5 | Soporte y Servicio Técnico Especializado</p>
+                        <p className="text-[10px] text-slate-500">C.C. Bolívar, Nivel PB, Local 12, Puerto Ordaz, Edo. Bolívar</p>
                     </div>
-
                     <div className="text-right text-[10px] text-slate-600 space-y-0.5 border-l border-slate-300 pl-3">
                         <p><strong className="text-slate-800">Fecha Emisión:</strong> {new Date().toLocaleDateString('es-VE')} {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</p>
                         <p><strong className="text-slate-800">Generado por:</strong> Administración / Recepción</p>
                         <p><strong className="text-slate-800">Estatus:</strong> Servicios Finalizados / Cobrados</p>
                     </div>
                 </div>
-
                 <div className="mt-3 pt-2 border-t border-slate-200 text-center">
-                    <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">
-                        Reporte de Detalles de Servicios para Liquidación
-                    </h2>
+                    <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">Reporte de Detalles de Servicios para Liquidación</h2>
                 </div>
             </div>
 
@@ -359,9 +290,7 @@ const ReportesPage = () => {
                 </div>
                 <div>
                     <span className="text-slate-500 block text-[10px]">Rango de Fecha Ingreso:</span>
-                    <strong className="text-slate-900">
-                        {startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}
-                    </strong>
+                    <strong className="text-slate-900">{startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}</strong>
                 </div>
                 <div>
                     <span className="text-slate-500 block text-[10px]">Total Servicios:</span>
@@ -388,22 +317,14 @@ const ReportesPage = () => {
                 <tbody>
                     {filteredLiquidaciones.length === 0 ? (
                         <tr>
-                            <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">
-                                No se encontraron servicios en el rango de fechas seleccionado.
-                            </td>
+                            <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
                         </tr>
                     ) : (
                         filteredLiquidaciones.map((row, idx) => (
                             <tr key={row.id} className={`border-b border-slate-400 ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
-                                <td className="p-1.5 border border-slate-800 font-mono font-bold text-center text-slate-900">
-                                    {row.codigo}
-                                </td>
-                                <td className="p-1.5 border border-slate-800 font-medium text-slate-800">
-                                    {row.tecnico}
-                                </td>
-                                <td className="p-1.5 border border-slate-800 text-slate-800">
-                                    {row.cliente}
-                                </td>
+                                <td className="p-1.5 border border-slate-800 font-mono font-bold text-center text-slate-900">{row.codigo}</td>
+                                <td className="p-1.5 border border-slate-800 font-medium text-slate-800">{row.tecnico}</td>
+                                <td className="p-1.5 border border-slate-800 text-slate-800">{row.cliente}</td>
                                 <td className="p-1.5 border border-slate-800 text-slate-800">
                                     <div className="font-semibold">{row.equipo}</div>
                                     <div className="text-[9px] text-slate-600 font-mono">S/N: {row.serial}</div>
@@ -411,38 +332,26 @@ const ReportesPage = () => {
                                 <td className="p-1.5 border border-slate-800 text-slate-700 leading-tight">
                                     <span>{row.trabajoRealizado}</span>
                                     {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
-                                        <div className="text-[9px] text-amber-800 font-medium">
-                                            Repuesto: {row.repuestosUsados}
-                                        </div>
+                                        <div className="text-[9px] text-amber-800 font-medium">Repuesto: {row.repuestosUsados}</div>
                                     )}
                                 </td>
-                                <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">
-                                    {formatDate(row.fechaIngreso)}
-                                </td>
-                                <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">
-                                    ${row.montoTotal.toFixed(2)}
-                                </td>
+                                <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
+                                <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
                             </tr>
                         ))
                     )}
                 </tbody>
                 <tfoot>
                     <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold">
-                        <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">
-                            Total General Cobrado ({filteredLiquidaciones.length} Servicios):
-                        </td>
-                        <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">
-                            ${totalFacturado.toFixed(2)}
-                        </td>
+                        <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General Cobrado ({filteredLiquidaciones.length} Servicios):</td>
+                        <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">${totalFacturado.toFixed(2)}</td>
                     </tr>
                 </tfoot>
             </table>
 
             {resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
                 <div className="mb-6 pt-2">
-                    <h3 className="text-[10px] font-bold uppercase text-slate-700 mb-1">
-                        Consolidado por Técnico en el Período
-                    </h3>
+                    <h3 className="text-[10px] font-bold uppercase text-slate-700 mb-1">Consolidado por Técnico en el Período</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
                         {resumenPorTecnico.map((t) => (
                             <div key={t.nombre} className="border border-slate-300 p-1.5 rounded bg-slate-50">
@@ -461,111 +370,43 @@ const ReportesPage = () => {
 
     return (
         <div className="space-y-6">
-
-            {/* Encabezado Principal */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <FileSpreadsheet className="text-[#97C719]" size={24} />
                         Liquidación y Reportes de Servicios
                     </h2>
-                    <p className="text-xs text-slate-500 mt-1">
-                        Reporte de servicios finalizados por fecha de ingreso para liquidación y respaldo operativo
-                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Reporte de servicios finalizados por fecha de ingreso para liquidación y respaldo operativo</p>
                 </div>
-
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                        variant="secondary"
-                        icon={Eye}
-                        onClick={() => setIsPreviewOpen(true)}
-                    >
-                        Vista Previa
-                    </Button>
-
-                    <Button
-                        variant="primary"
-                        icon={Printer}
-                        onClick={handlePrintReport}
-                    >
-                        Imprimir / Guardar PDF
-                    </Button>
-
-                    <Button
-                        variant="secondary"
-                        icon={HardDriveDownload}
-                        onClick={handleDownloadBackup}
-                    >
-                        Respaldo
-                    </Button>
+                    <Button variant="secondary" icon={Eye} onClick={() => setIsPreviewOpen(true)}>Vista Previa</Button>
+                    <Button variant="primary" icon={Printer} onClick={handlePrintReport}>Imprimir / Guardar PDF</Button>
+                    <Button variant="secondary" icon={HardDriveDownload} onClick={handleDownloadBackup}>Respaldo</Button>
                 </div>
             </div>
 
-            {/* Pestañas */}
             <div className="flex border-b border-slate-200 gap-6">
-                <button
-                    onClick={() => setActiveTab('LIQUIDACION')}
-                    className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'LIQUIDACION'
-                        ? 'border-[#97C719] text-slate-900'
-                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                >
+                <button onClick={() => setActiveTab('LIQUIDACION')} className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'LIQUIDACION' ? 'border-[#97C719] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                     <DollarSign size={16} className={activeTab === 'LIQUIDACION' ? 'text-[#97C719]' : 'text-slate-400'} />
                     <span>Detalle de Servicios para Liquidación</span>
                 </button>
-
-                <button
-                    onClick={() => setActiveTab('LOGS')}
-                    className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'LOGS'
-                        ? 'border-[#97C719] text-slate-900'
-                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                >
+                <button onClick={() => setActiveTab('LOGS')} className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'LOGS' ? 'border-[#97C719] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                     <Activity size={16} className={activeTab === 'LOGS' ? 'text-[#97C719]' : 'text-slate-400'} />
                     <span>Registro de Actividad y Auditoría</span>
                 </button>
-
-                <button
-                    onClick={() => setActiveTab('BACKUP')}
-                    className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'BACKUP'
-                        ? 'border-[#97C719] text-slate-900'
-                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                >
+                <button onClick={() => setActiveTab('BACKUP')} className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'BACKUP' ? 'border-[#97C719] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                     <Database size={16} className={activeTab === 'BACKUP' ? 'text-[#97C719]' : 'text-slate-400'} />
                     <span>Respaldos de Información (RNF-06)</span>
                 </button>
             </div>
 
-            {/* PESTAÑA LIQUIDACIÓN */}
             {activeTab === 'LIQUIDACION' && (
                 <div className="space-y-6">
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <MetricCard
-                            title="Total Monto Cobrado"
-                            value={`$${totalFacturado.toFixed(2)}`}
-                            icon={DollarSign}
-                            color="emerald"
-                        />
-                        <MetricCard
-                            title="Servicios en el Reporte"
-                            value={filteredLiquidaciones.length.toString()}
-                            icon={CheckCircle2}
-                            color="blue"
-                        />
-                        <MetricCard
-                            title="Ticket Promedio"
-                            value={`$${ticketPromedio}`}
-                            icon={TrendingUp}
-                            color="amber"
-                        />
-                        <MetricCard
-                            title="Técnicos Involucrados"
-                            value={resumenPorTecnico.length.toString()}
-                            icon={Users}
-                            color="primary"
-                        />
+                        <MetricCard title="Total Monto Cobrado" value={`$${totalFacturado.toFixed(2)}`} icon={DollarSign} color="emerald" />
+                        <MetricCard title="Servicios en el Reporte" value={filteredLiquidaciones.length.toString()} icon={CheckCircle2} color="blue" />
+                        <MetricCard title="Ticket Promedio" value={`$${ticketPromedio}`} icon={TrendingUp} color="amber" />
+                        <MetricCard title="Técnicos Involucrados" value={resumenPorTecnico.length.toString()} icon={Users} color="primary" />
                     </div>
 
                     <div className="space-y-2">
@@ -575,33 +416,12 @@ const ReportesPage = () => {
                                 <span>Filtros rápidos por fecha:</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5">
-                                <button
-                                    onClick={() => handleQuickDatePreset('ALL')}
-                                    className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${!startDate && !endDate ? 'bg-[#97C719] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                                >
-                                    Todos
-                                </button>
-                                <button
-                                    onClick={() => handleQuickDatePreset('TODAY')}
-                                    className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
-                                >
-                                    Hoy
-                                </button>
-                                <button
-                                    onClick={() => handleQuickDatePreset('LAST_30_DAYS')}
-                                    className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
-                                >
-                                    Últimos 30 días
-                                </button>
-                                <button
-                                    onClick={() => handleQuickDatePreset('THIS_MONTH')}
-                                    className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
-                                >
-                                    Este Mes
-                                </button>
+                                <button onClick={() => handleQuickDatePreset('ALL')} className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${!startDate && !endDate ? 'bg-[#97C719] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>Todos</button>
+                                <button onClick={() => handleQuickDatePreset('TODAY')} className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors">Hoy</button>
+                                <button onClick={() => handleQuickDatePreset('LAST_30_DAYS')} className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors">Últimos 30 días</button>
+                                <button onClick={() => handleQuickDatePreset('THIS_MONTH')} className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors">Este Mes</button>
                             </div>
                         </div>
-
                         <FilterBar fields={filterFields} onReset={handleResetFilters} />
                     </div>
 
@@ -611,9 +431,7 @@ const ReportesPage = () => {
                                 <Card key={tec.nombre} className="p-3 border-l-4 border-l-[#97C719]">
                                     <div className="flex justify-between items-start">
                                         <div className="overflow-hidden">
-                                            <h4 className="font-bold text-slate-800 text-xs truncate" title={tec.nombre}>
-                                                {tec.nombre}
-                                            </h4>
+                                            <h4 className="font-bold text-slate-800 text-xs truncate" title={tec.nombre}>{tec.nombre}</h4>
                                             <p className="text-[10px] text-slate-500">{tec.servicios} servicio(s)</p>
                                         </div>
                                     </div>
@@ -642,54 +460,26 @@ const ReportesPage = () => {
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
-                                    {filteredLiquidaciones.length} Registros
-                                </span>
-                                <Button
-                                    variant="primary"
-                                    size="sm"
-                                    icon={Printer}
-                                    onClick={handlePrintReport}
-                                >
-                                    Imprimir Reporte
-                                </Button>
+                                <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">{filteredLiquidaciones.length} Registros</span>
+                                <Button variant="primary" size="sm" icon={Printer} onClick={handlePrintReport}>Imprimir Reporte</Button>
                             </div>
                         </div>
-
                         <Table columns={liquidacionColumns} data={filteredLiquidaciones} />
                     </Card>
-
                 </div>
             )}
 
-            {/* PESTAÑA LOGS */}
             {activeTab === 'LOGS' && (
                 <div className="space-y-6">
-
                     <Card className="p-4">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="sm:col-span-2">
-                                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                                    Buscar en el Registro
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Buscar por usuario, acción, número de orden o detalle..."
-                                    value={logSearch}
-                                    onChange={(e) => setLogSearch(e.target.value)}
-                                    className="w-full bg-white border border-[#E2E8F0] text-xs text-slate-800 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all placeholder:text-slate-400"
-                                />
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Buscar en el Registro</label>
+                                <input type="text" placeholder="Buscar por usuario, acción, número de orden o detalle..." value={logSearch} onChange={(e) => setLogSearch(e.target.value)} className="w-full bg-white border border-[#E2E8F0] text-xs text-slate-800 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all placeholder:text-slate-400" />
                             </div>
-
                             <div>
-                                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                                    Módulo
-                                </label>
-                                <select
-                                    value={logModuleFilter}
-                                    onChange={(e) => setLogModuleFilter(e.target.value)}
-                                    className="w-full bg-white border border-[#E2E8F0] text-xs text-slate-800 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all"
-                                >
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Módulo</label>
+                                <select value={logModuleFilter} onChange={(e) => setLogModuleFilter(e.target.value)} className="w-full bg-white border border-[#E2E8F0] text-xs text-slate-800 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all">
                                     <option value="ALL">Todos los Módulos</option>
                                     <option value="Órdenes">Órdenes</option>
                                     <option value="Taller">Taller / Diagnósticos</option>
@@ -704,120 +494,65 @@ const ReportesPage = () => {
                     <Card>
                         <div className="flex justify-between items-center mb-4">
                             <div>
-                                <h3 className="font-bold text-slate-800 text-sm">
-                                    Historial Cronológico de Movimientos
-                                </h3>
-                                <p className="text-[11px] text-slate-500">
-                                    Trazabilidad de cambios de estatus, diagnósticos, creaciones y cierres
-                                </p>
+                                <h3 className="font-bold text-slate-800 text-sm">Historial Cronológico de Movimientos</h3>
+                                <p className="text-[11px] text-slate-500">Trazabilidad de cambios de estatus, diagnósticos, creaciones y cierres</p>
                             </div>
-                            <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
-                                {filteredLogs.length} Eventos Registrados
-                            </span>
+                            <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">{filteredLogs.length} Eventos Registrados</span>
                         </div>
-
                         <Table columns={logColumns} data={filteredLogs} />
                     </Card>
-
                 </div>
             )}
 
-            {/* PESTAÑA BACKUP */}
             {activeTab === 'BACKUP' && (
                 <div className="space-y-6">
-
                     <Card className="p-6">
                         <div className="flex items-start gap-4">
-                            <div className="p-3 bg-[#F3F7E9] text-[#55720C] rounded-lg shrink-0">
-                                <Database size={28} />
-                            </div>
+                            <div className="p-3 bg-[#F3F7E9] text-[#55720C] rounded-lg shrink-0"><Database size={28} /></div>
                             <div className="space-y-2 flex-1">
-                                <h3 className="text-base font-bold text-slate-800">
-                                    Copia de Seguridad y Respaldo de Datos (RNF-06)
-                                </h3>
-                                <p className="text-xs text-slate-600 leading-relaxed">
-                                    Para garantizar la integridad y prevenir la pérdida de registros históricos en la red local (LAN),
-                                    el sistema permite descargar una copia completa de seguridad de las órdenes, clientes, equipos y liquidaciones.
-                                </p>
-
+                                <h3 className="text-base font-bold text-slate-800">Copia de Seguridad y Respaldo de Datos (RNF-06)</h3>
+                                <p className="text-xs text-slate-600 leading-relaxed">Para garantizar la integridad y prevenir la pérdida de registros históricos en la red local (LAN), el sistema permite descargar una copia completa de seguridad de las órdenes, clientes, equipos y liquidaciones.</p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                                            Último Respaldo Local
-                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Último Respaldo Local</span>
                                         <p className="text-xs font-semibold text-slate-800">Hoy, {new Date().toLocaleDateString('es-VE')} (Automático)</p>
                                         <p className="text-[11px] text-emerald-600 font-medium">Estado: Operativo e Íntegro</p>
                                     </div>
-
                                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                                            Base de Datos
-                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Base de Datos</span>
                                         <p className="text-xs font-semibold text-slate-800">PostgreSQL (Red LAN Local)</p>
                                         <p className="text-[11px] text-slate-500 font-medium">Ubicación: C.C. Bolívar, Puerto Ordaz</p>
                                     </div>
                                 </div>
-
                                 <div className="pt-4 flex items-center gap-3">
-                                    <Button
-                                        variant="primary"
-                                        icon={Download}
-                                        onClick={handleDownloadBackup}
-                                    >
-                                        Descargar Copia de Seguridad (.JSON)
-                                    </Button>
+                                    <Button variant="primary" icon={Download} onClick={handleDownloadBackup}>Descargar Copia de Seguridad (.JSON)</Button>
                                 </div>
                             </div>
                         </div>
                     </Card>
-
                 </div>
             )}
 
-            {/* MODAL DE VISTA PREVIA */}
-            <Modal
-                isOpen={isPreviewOpen}
-                onClose={() => setIsPreviewOpen(false)}
-                title="Vista Previa de Reporte de Liquidación (PDF)"
-                maxWidth="max-w-4xl"
-            >
+            <Modal isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} title="Vista Previa de Reporte de Liquidación (PDF)" maxWidth="max-w-4xl">
                 <div className="space-y-4">
                     <div className="flex justify-between items-center bg-slate-100 p-3 rounded-lg">
-                        <span className="text-xs text-slate-600">
-                            Verifique los datos antes de imprimir o guardar como PDF en su navegador.
-                        </span>
+                        <span className="text-xs text-slate-600">Verifique los datos antes de imprimir o guardar como PDF en su navegador.</span>
                         <div className="flex gap-2">
-                            <Button
-                                variant="primary"
-                                icon={Printer}
-                                size="sm"
-                                onClick={handlePrintReport}
-                            >
-                                Imprimir / Guardar PDF
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setIsPreviewOpen(false)}
-                            >
-                                Cerrar
-                            </Button>
+                            <Button variant="primary" icon={Printer} size="sm" onClick={handlePrintReport}>Imprimir / Guardar PDF</Button>
+                            <Button variant="secondary" size="sm" onClick={() => setIsPreviewOpen(false)}>Cerrar</Button>
                         </div>
                     </div>
-
                     <div className="border border-slate-300 rounded-lg shadow-sm overflow-hidden bg-white">
                         <ReportContent isModalView={true} />
                     </div>
                 </div>
             </Modal>
 
-            {/* CONTENEDOR OCULTO PARA RECENT-TO-PRINT */}
             <div className="hidden">
                 <div ref={contentRef}>
                     <ReportContent isModalView={false} />
                 </div>
             </div>
-
         </div>
     );
 };

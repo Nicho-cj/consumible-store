@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import AppRoutes from './routes/AppRoutes';
 import NewOrderModal from './components/modals/NewOrderModal';
-import OrdenEnvioModal from './components/modals/OrdenEnvioModal'; // <-- 1. Importar
+import OrdenEnvioModal from './components/modals/OrdenEnvioModal';
 
 function App() {
     const [currentRole, setCurrentRole] = useState(null);
-    // Control modal de Nueva Orden
     const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
-
-    // Control modal del Comprobante / Recibo
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [lastCreatedOrder, setLastCreatedOrder] = useState(null);
 
@@ -16,22 +13,35 @@ function App() {
         setIsNewOrderModalOpen(true);
     };
 
-    // Al hacer clic en "Guardar Orden de Servicio":
     const handleSaveOrder = (orderData) => {
-        // Estructura completa de la orden simulada
         const nuevaOrdenCompleta = {
-            id: `ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-            fecha: new Date().toLocaleString('es-VE'),
-            tecnico: 'J. Medina',
-            cliente: orderData.cliente,
-            equipo: orderData.equipo,
-            falla: orderData.equipo?.falla,
-            serial: orderData.equipo?.serial,
-            contadorInicial: 12450,
-            tipoServicio: 'Revisión y Reparación'
+            id: Date.now(),
+            codigo: `ORD-2026-${String(Math.floor(1000 + Math.random() * 9000))}`,
+            fechaIngreso: new Date().toISOString().slice(0, 10),
+            fechaEntregado: null,
+            clienteId: null,
+            clienteNombre: orderData.cliente?.nombre || 'Cliente General',
+            clienteCedulaRif: orderData.cliente?.cedulaRif || '',
+            clienteTelefono: orderData.cliente?.telefono || '',
+            clienteEmail: '',
+            equipoModelo: orderData.equipo ? `${orderData.equipo.marca} ${orderData.equipo.modelo}` : 'Equipo',
+            tipoEquipo: 'Equipo de Oficina',
+            equipoSerie: orderData.equipo?.serial || 'S/N-000000',
+            equipoMarca: orderData.equipo?.marca || '',
+            fallaReportada: orderData.equipo?.falla || 'Revisión general',
+            diagnosticoInicial: orderData.equipo?.falla || 'Revisión general',
+            diagnostico: '',
+            observacionesFisicas: orderData.equipo?.observaciones || '',
+            accesorios: '',
+            tecnicoId: orderData.tecnicoId ? parseInt(orderData.tecnicoId, 10) : null,
+            tecnicoAsignado: orderData.tecnicoId ? getTecnicoName(orderData.tecnicoId) : 'Sin Asignar',
+            estado: 'REGISTRADO',
+            contadorInicial: 0,
+            contadorFinal: null,
+            montoCobro: null,
+            repuestosUsados: [],
         };
 
-        // Cerrar modal de creación y abrir el comprobante de WhatsApp / Impresión
         setIsNewOrderModalOpen(false);
         setLastCreatedOrder(nuevaOrdenCompleta);
         setIsReceiptModalOpen(true);
@@ -48,15 +58,11 @@ function App() {
                 onRoleChange={handleRoleChange}
                 onOpenNewOrderModal={handleOpenNewOrderModal}
             />
-
-            {/* Modal de Formulario */}
             <NewOrderModal
                 isOpen={isNewOrderModalOpen}
                 onClose={() => setIsNewOrderModalOpen(false)}
                 onSubmit={handleSaveOrder}
             />
-
-            {/* Modal de Comprobante / WhatsApp / Impresión con JsBarcode */}
             <OrdenEnvioModal
                 isOpen={isReceiptModalOpen}
                 onClose={() => setIsReceiptModalOpen(false)}
@@ -64,6 +70,16 @@ function App() {
             />
         </>
     );
+}
+
+function getTecnicoName(id) {
+    const tecnicos = {
+        1: 'Hector Luis Rodriguez',
+        2: 'Dario Jose Jimenez',
+        3: 'Domingo',
+        4: 'Eloy',
+    };
+    return tecnicos[parseInt(id, 10)] || 'Sin Asignar';
 }
 
 export default App;

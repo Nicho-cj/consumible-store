@@ -316,9 +316,10 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                             className="w-full bg-white text-xs font-medium text-slate-800 p-2.5 border border-[#E2E8F0] rounded-md outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all"
                         >
                             <option value="">-- Seleccionar Técnico (Opcional) --</option>
-                            <option value="1">Dario Jose Jimenez (Técnico)</option>
-                            <option value="2">Jesús Saavedra (Técnico)</option>
-                            <option value="3">Hector Luis Rodriguez (Técnico)</option>
+                            <option value="1">Hector Luis Rodriguez (Técnico)</option>
+                            <option value="2">Dario Jose Jimenez (Técnico)</option>
+                            <option value="3">Domingo (Técnico)</option>
+                            <option value="4">Eloy (Técnico)</option>
                         </select>
                     </div>
                 </div>

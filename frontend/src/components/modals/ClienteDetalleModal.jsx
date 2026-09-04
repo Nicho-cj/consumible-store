@@ -1,15 +1,25 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Wrench, Laptop, CheckCircle2, Clock } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import StatusBadge from '../common/StatusBadge';
+import { mockOrdenes, getOrdenesActivasByClienteId } from '../../data/ordenesData';
+import { getEquiposByClienteId } from '../../data/equiposData';
 
 const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
     const [activeTab, setActiveTab] = useState('ordenes');
 
-    if (!customer) return null;
+    const ordenesActivas = useMemo(
+        () => (customer ? getOrdenesActivasByClienteId(customer.id) : []),
+        [customer]
+    );
 
-    const ordenesActivas = customer.ordenesActivas || [];
-    const equiposRegistrados = customer.equipos || [];
+    const equiposRegistrados = useMemo(
+        () => (customer ? getEquiposByClienteId(customer.id) : []),
+        [customer]
+    );
+
+    if (!customer) return null;
 
     return (
         <Modal
@@ -18,11 +28,10 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
             title={`Detalle del Cliente - ${customer.nombre}`}
         >
             <div className="space-y-4">
-                {/* Datos generales rápidos del cliente */}
                 <div className="p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg flex flex-wrap justify-between gap-2 text-xs">
                     <div>
                         <span className="text-slate-400 block font-medium">Documento</span>
-                        <span className="font-semibold text-slate-700">{customer.cedulaRif || customer.documento || 'N/A'}</span>
+                        <span className="font-semibold text-slate-700">{customer.cedulaRif || 'N/A'}</span>
                     </div>
                     <div>
                         <span className="text-slate-400 block font-medium">Teléfono</span>
@@ -32,16 +41,19 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                         <span className="text-slate-400 block font-medium">Correo</span>
                         <span className="font-semibold text-slate-700">{customer.email || 'N/A'}</span>
                     </div>
+                    <div>
+                        <span className="text-slate-400 block font-medium">Dirección</span>
+                        <span className="font-semibold text-slate-700">{customer.direccion || 'N/A'}</span>
+                    </div>
                 </div>
 
-                {/* Tabs de navegación interna */}
                 <div className="flex border-b border-[#E2E8F0] gap-4 text-xs font-semibold">
                     <button
                         type="button"
                         onClick={() => setActiveTab('ordenes')}
                         className={`pb-2 transition-colors flex items-center gap-1.5 border-b-2 cursor-pointer ${activeTab === 'ordenes'
-                            ? 'border-[#97C719] text-[#55720C]'
-                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                                ? 'border-[#97C719] text-[#55720C]'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         <Wrench size={14} />
@@ -51,8 +63,8 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                         type="button"
                         onClick={() => setActiveTab('equipos')}
                         className={`pb-2 transition-colors flex items-center gap-1.5 border-b-2 cursor-pointer ${activeTab === 'equipos'
-                            ? 'border-[#97C719] text-[#55720C]'
-                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                                ? 'border-[#97C719] text-[#55720C]'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         <Laptop size={14} />
@@ -60,7 +72,6 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                     </button>
                 </div>
 
-                {/* Contenido según el Tab */}
                 {activeTab === 'ordenes' ? (
                     <div>
                         {ordenesActivas.length > 0 ? (
@@ -76,21 +87,12 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                                     </thead>
                                     <tbody className="divide-y divide-[#E2E8F0]">
                                         {ordenesActivas.map((orden) => (
-                                            <tr key={orden.id || orden.codigo} className="hover:bg-slate-50/80 transition-colors">
-                                                <td className="p-2.5 font-bold text-slate-800">
-                                                    #{orden.numeroOrden || orden.codigo}
-                                                </td>
-                                                <td className="p-2.5 font-medium text-slate-700">
-                                                    {orden.equipo || orden.modelo}
-                                                </td>
-                                                <td className="p-2.5 text-slate-500">
-                                                    {orden.fechaIngreso || orden.fecha}
-                                                </td>
+                                            <tr key={orden.id} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="p-2.5 font-bold text-slate-800">#{orden.codigo}</td>
+                                                <td className="p-2.5 font-medium text-slate-700">{orden.equipoModelo}</td>
+                                                <td className="p-2.5 text-slate-500">{orden.fechaIngreso}</td>
                                                 <td className="p-2.5 text-right">
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                                        <Clock size={11} />
-                                                        {orden.estatus}
-                                                    </span>
+                                                    <StatusBadge status={orden.estado} />
                                                 </td>
                                             </tr>
                                         ))}
@@ -116,27 +118,14 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                                             <th className="p-2.5">Tipo / Categoría</th>
                                             <th className="p-2.5">Marca / Modelo</th>
                                             <th className="p-2.5">N° Serie</th>
-                                            <th className="p-2.5 text-right">Estado</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#E2E8F0]">
-                                        {equiposRegistrados.map((eq, index) => (
-                                            <tr key={eq.id || index} className="hover:bg-slate-50/80 transition-colors">
-                                                <td className="p-2.5 font-bold text-slate-800">
-                                                    {eq.tipo || 'Impresora / Fotocopiadora'}
-                                                </td>
-                                                <td className="p-2.5 font-medium text-slate-700">
-                                                    {eq.marca} {eq.modelo}
-                                                </td>
-                                                <td className="p-2.5 font-mono text-slate-500">
-                                                    {eq.serie || 'N/A'}
-                                                </td>
-                                                <td className="p-2.5 text-right">
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                                                        <CheckCircle2 size={11} />
-                                                        {eq.estadoRegistro || 'Registrado'}
-                                                    </span>
-                                                </td>
+                                        {equiposRegistrados.map((eq) => (
+                                            <tr key={eq.id} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="p-2.5 font-bold text-slate-800">{eq.tipo}</td>
+                                                <td className="p-2.5 font-medium text-slate-700">{eq.marca} {eq.modelo}</td>
+                                                <td className="p-2.5 font-mono text-slate-500">{eq.serial}</td>
                                             </tr>
                                         ))}
                                     </tbody>

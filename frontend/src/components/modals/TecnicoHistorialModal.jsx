@@ -1,11 +1,20 @@
+import { useMemo } from 'react';
 import { History, CheckCircle2 } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import StatusBadge from '../common/StatusBadge';
+import { mockOrdenes, ORDER_STATUS } from '../../data/ordenesData';
 
 const TecnicoHistorialModal = ({ isOpen, onClose, technician }) => {
     if (!technician) return null;
 
-    const historial = technician.historialOrdenes || [];
+    const historial = useMemo(() => {
+        return mockOrdenes.filter(
+            (o) =>
+                o.tecnicoId === technician.id &&
+                (o.estado === ORDER_STATUS.ENTREGADO || o.estado === ORDER_STATUS.LISTO_ENTREGA)
+        );
+    }, [technician]);
 
     return (
         <Modal
@@ -32,20 +41,11 @@ const TecnicoHistorialModal = ({ isOpen, onClose, technician }) => {
                             <tbody className="divide-y divide-[#E2E8F0]">
                                 {historial.map((orden) => (
                                     <tr key={orden.id} className="hover:bg-slate-50/80 transition-colors">
-                                        <td className="p-2.5 font-bold text-slate-800">
-                                            #{orden.numeroOrden}
-                                        </td>
-                                        <td className="p-2.5 font-medium text-slate-700">
-                                            {orden.equipo}
-                                        </td>
-                                        <td className="p-2.5 text-slate-500">
-                                            {orden.fechaFinalizacion}
-                                        </td>
+                                        <td className="p-2.5 font-bold text-slate-800">#{orden.codigo}</td>
+                                        <td className="p-2.5 font-medium text-slate-700">{orden.equipoModelo}</td>
+                                        <td className="p-2.5 text-slate-500">{orden.fechaEntregado || '-'}</td>
                                         <td className="p-2.5 text-right">
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                <CheckCircle2 size={12} />
-                                                {orden.estatus}
-                                            </span>
+                                            <StatusBadge status={orden.estado} />
                                         </td>
                                     </tr>
                                 ))}
