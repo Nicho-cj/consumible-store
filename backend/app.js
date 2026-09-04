@@ -1,18 +1,40 @@
 import express, { json } from 'express'
-import { clientesRouter } from './src/routes/cliente.js'
 import { corsMiddleware } from './src/middlewares/cors.js'
+import { errorHandler } from "./src/middlewares/errorHandler.js";
 import 'dotenv/config'
 
 const PORT = process.env.BACK_PORT
 const HOST = process.env.FRONT_HOST
 
 const app = express()
+app.disable('x-powered-by')
 app.use(json())
 app.use(corsMiddleware(HOST))
-app.disable('x-powered-by')
 
+//  ENRUTADORES
+import { clientesRouter } from './src/routes/cliente.js'
+import { equiposRouter } from './src/routes/equipo.js'
+import { tecnicosRouter } from './src/routes/tecnico.js'
+import { ordenesRouter } from './src/routes/ordenServicio.js'
+import { usuariosRouter } from "./src/routes/usuario.js";
+import { AppError } from './src/utils/appError.js';
+
+//  ENDPOINTS
 app.use('/clientes', clientesRouter)
+app.use('/equipos', equiposRouter)
+app.use('/tecnicos', tecnicosRouter)
+app.use('/ordenes', ordenesRouter)
+app.use('/usuarios', usuariosRouter)
+
+//  MENSAJE POR DEFECTO
+app.use((rep, res) => { res.status(404).json({
+  "status":"error",
+  "message":"API inexistente"
+}) })
+
+//  MANEJO DE ERRORES
+app.use(errorHandler)
 
 app.listen(PORT, () => {
-  console.log(`Backend funcionando en la ruta http://localhost:${PORT}`)
+  console.log(`Backend funcionando ( http://localhost:${PORT} )`)
 })
