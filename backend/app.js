@@ -15,21 +15,24 @@ app.use(corsMiddleware(HOST))
 import { clientesRouter } from './src/routes/cliente.js'
 import { equiposRouter } from './src/routes/equipo.js'
 import { tecnicosRouter } from './src/routes/tecnico.js'
-import { ordenesRouter } from './src/routes/ordenServicio.js'
 import { usuariosRouter } from "./src/routes/usuario.js";
-import { AppError } from './src/utils/appError.js';
+import { ordenesRouter } from './src/routes/ordenes.js'
+// import { serviciosRouter } from "./src/routes/servicio.js";
+// import { repuestosRouter } from "./src/routes/repuesto.js";
 
 //  ENDPOINTS
 app.use('/clientes', clientesRouter)
 app.use('/equipos', equiposRouter)
 app.use('/tecnicos', tecnicosRouter)
-app.use('/ordenes', ordenesRouter)
 app.use('/usuarios', usuariosRouter)
+app.use('/ordenes', ordenesRouter)
+// app.use('/servicios', serviciosRouter)
+// app.use('/repuestos', repuestosRouter)
 
 //  MENSAJE POR DEFECTO
-app.use((rep, res) => { res.status(404).json({
+app.use((req, res) => { res.status(404).json({
   "status":"error",
-  "message":"API inexistente"
+  "message":"Endpoint inexistente"
 }) })
 
 //  MANEJO DE ERRORES

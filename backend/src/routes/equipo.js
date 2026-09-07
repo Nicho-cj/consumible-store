@@ -1,20 +1,20 @@
 import { Router } from "express";
 import { validate, validatePartial } from "../middlewares/validate.js";
 import { equipoSchema } from "../schemas/equipoSchema.js";
+import { EquipoController } from "../controllers/equipo.js";
 
 export const equiposRouter = Router()
 
 equiposRouter.route("/")
-     .get((req, res) => res.status(200).json({"status": "ta'bien"}))
-     .post(validate(equipoSchema));
+     .get(EquipoController.getAll)
+     .post(validate(equipoSchema), EquipoController.create);
 
 equiposRouter.route("/:serial")
-     .get((req, res) => res.status(200).json({"status": "ta'bien"}))
-     .put(validate(equipoSchema))
-     .patch(validatePartial(equipoSchema))
-     .delete((req, res) => res.status(200).json({"status": "ta'bien"}));
+     .get(EquipoController.getById)
+     .put(validate(equipoSchema), EquipoController.update)
+     .patch(validatePartial(equipoSchema), EquipoController.patch)
+     .delete(EquipoController.delete);
 
-equiposRouter.get("/:serial/clientes", (req, res) => res.status(200).json({"status": "ta'bien"}));
+equiposRouter.get("/:serial/ordenes", EquipoController.getOrdenes);
 
-equiposRouter.get("/:serial/ordenes", (req, res) => res.status(200).json({"status": "ta'bien"}));
-
+equiposRouter.get("/:serial/clientes", EquipoController.getClientes);      //   OPCIONAL

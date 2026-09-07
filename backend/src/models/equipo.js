@@ -1,8 +1,22 @@
 import { query } from "../config/db.js";
 
 export class EquipoModel {
-    static async getAll() {
-        const result = await query('SELECT * FROM equipo ORDER BY id_equipo DESC');
+    static async getAll(filters = {}) {
+        let consulta = 'SELECT * FROM equipo'
+        const values = []
+        const conditions = [];
+
+        const filterKeys = Object.keys(filters);
+        if (filterKeys.length > 0) {
+            filterKeys.forEach((key, index) => {
+                filters[key] = `%${filters[key]}%`
+                values.push(filters[key]);
+                conditions.push(`${key} LIKE $${index + 1}`);
+            });
+            consulta += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        const result = await query(consulta, values);
         return result.rows;
     }
 

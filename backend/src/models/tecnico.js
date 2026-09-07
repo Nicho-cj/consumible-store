@@ -2,7 +2,7 @@ import { query } from "../config/db.js";
 
 export class TecnicoModel {
     static async getAll() {
-        const result = await query('SELECT * FROM tecnico ORDER BY id_tecnico DESC');
+        const result = await query('SELECT * FROM tecnico');
         return result.rows;
     }
 
@@ -57,16 +57,6 @@ export class TecnicoModel {
 
     static async getOrdenes(id_tecnico) {
         const result = await query('SELECT * FROM orden_servicio WHERE id_tecnico = $1', [id_tecnico]);
-        return result.rows;
-    }
-
-    static async getEquipos(id_tecnico) {
-        const result = await query(
-            `SELECT DISTINCT e.* FROM equipo e
-             JOIN orden_servicio o ON e.id_equipo = o.id_equipo
-             WHERE o.id_tecnico = $1`,
-            [id_tecnico]
-        );
         return result.rows;
     }
 }

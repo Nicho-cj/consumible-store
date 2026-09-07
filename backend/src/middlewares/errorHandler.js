@@ -1,6 +1,6 @@
-export const errorHandler = (err, req, res, next) => {
-     console.log(typeof err);
-     console.error(err);
+export const errorHandler = (err, req, res) => {
+     // console.log(typeof err);
+     // console.error(err);
 
      //   ERRORES : Base de Datos
      switch (err.code) {
@@ -33,8 +33,16 @@ export const errorHandler = (err, req, res, next) => {
                     status: 'error',
                     message: 'Base de Datos: La tabla no existe',
                })
+
+          case '42703':
+               return res.status(404).json({
+                    status: 'error',
+                    message: 'Base de Datos: filtro desconocido',
+               })
      }
 
+     // BORRAR EN PRODUCCIÓM
+     console.log(err);
 
 
      return res.status(500).json({

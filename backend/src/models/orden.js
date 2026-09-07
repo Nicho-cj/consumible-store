@@ -1,6 +1,6 @@
 import { query } from "../config/db.js";
 
-export class OrdenServicioModel {
+export class OrdenModel {
     static async getAll() {
         const result = await query('SELECT * FROM orden_servicio ORDER BY id_orden DESC');
         return result.rows;
@@ -8,7 +8,7 @@ export class OrdenServicioModel {
 
     static async getById(id_orden) {
         const result = await query('SELECT * FROM orden_servicio WHERE id_orden = $1', [id_orden]);
-        return result.rows[0];
+        return result.rows;
     }
 
     static async create(data) {
@@ -67,8 +67,39 @@ export class OrdenServicioModel {
         return result.rows[0];
     }
 
-    // Estados
-    static async getEstados() {
+    static async getCliente(id_orden) {
+        const result = await query('SELECT c.* FROM cliente c JOIN orden_servicio o ON o.id_cliente = c.id_cliente WHERE o.id_orden = $1', [id_orden])
+        return result.rows
+    }
+
+    static async getEquipo(id_orden) {
+        const result = await query('SELECT e.* FROM equipo e JOIN orden_servicio o ON o.id_equipo = e.id_equipo WHERE o.id_orden = $1', [id_orden])
+        return result.rows
+    }
+
+    static async getUsuario(id_orden) {
+        const result = await query('SELECT u.* FROM usuario u JOIN orden_servicio o ON o.id_usuario_recep = u.id_usuario WHERE o.id_orden = $1', [id_orden])
+        return result.rows
+    }
+
+    static async getTecnico(id_orden) {
+        const result = await query('SELECT t.* FROM tecnico t JOIN orden_servicio o ON o.id_tecnico = t.id_tecnico WHERE o.id_orden = $1', [id_orden])
+        return result.rows
+    }
+
+    static async getServicio(id_orden) {
+        const result = await query('SELECT * FROM nota_servicio WHERE id_orden = $1', [id_orden])
+        return result.rows
+    }
+
+    static async getRespuestos(id_orden) {
+        const result = await query('SELECT * FROM detalle_repuesto WHERE id_orden = $1', [id_orden])
+        return result.rows
+    }
+
+    // ESTADOS
+
+    static async getAbierto() {
         const result = await query('SELECT * FROM orden_servicio WHERE fecha_salida IS NULL');
         return result.rows;
     }

@@ -1,14 +1,12 @@
 import { ClienteModel } from "../models/cliente.js";
-import { AppError } from "../utils/appError.js";
 
 export class ClienteController {
      static async getAll(req, res) {
-
-          const clientes = await ClienteModel.getAll()
+          const clientes = await ClienteModel.getAll(req.query)
           res.status(200).json(clientes)
      }
 
-     static async create(req, res, next) {
+     static async create(req, res) {
 
           const data = req.body
           const resultado = await ClienteModel.create(data)
@@ -16,7 +14,7 @@ export class ClienteController {
           res.status(200).json(resultado)
      }
 
-     static async getById(req, res, next) {
+     static async getById(req, res) {
           const id = req.params.id
           const cliente = await ClienteModel.getById(id)
 
@@ -31,7 +29,7 @@ export class ClienteController {
           res.status(200).json(cliente)
      }
 
-     static async patch (req, res, next) {
+     static async patch (req, res) {
           const id = req.params.id
           const data = req.body
           const cliente = await ClienteModel.patch(id, data)
@@ -39,21 +37,21 @@ export class ClienteController {
           res.status(200).json(cliente)
      }
 
-     static async delete (req, res, next) {
+     static async delete (req, res) {
           const id = req.params.id
           const resultado = await ClienteModel.delete(id)
 
           res.status(200).json(resultado)
      }
 
-     static async getEquipos (req, res, next) {
+     static async getEquipos (req, res) {
           const id = req.params.id
-          const equipos = await ClienteModel.getOrdenes(id)
+          const equipos = await ClienteModel.getEquipos(id)
 
           res.status(200).json(equipos)
      }
 
-     static async getOrdenes(req, res, next) {
+     static async getOrdenes(req, res) {
           const id = req.params.id
           const equipos = await ClienteModel.getOrdenes(id)
 

@@ -1,8 +1,22 @@
 import { query } from "../config/db.js";
 
 export class ClienteModel {
-    static async getAll() {
-        const result = await query('SELECT * FROM cliente ORDER BY id_cliente DESC');
+    static async getAll(filters = {}) {
+        let consulta = 'SELECT * FROM cliente'
+        const values = []
+        const conditions = [];
+
+        const filterKeys = Object.keys(filters);
+        if (filterKeys.length > 0) {
+            filterKeys.forEach((key, index) => {
+                filters[key] = `%${filters[key]}%`
+                values.push(filters[key]);
+                conditions.push(`${key} LIKE $${index + 1}`);
+            });
+            consulta += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        const result = await query(consulta, values);
         return result.rows;
     }
 

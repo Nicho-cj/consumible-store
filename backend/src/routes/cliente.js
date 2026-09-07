@@ -15,6 +15,6 @@ clientesRouter.route("/:id")
      .patch(validatePartial(clienteSchema), ClienteController.patch)
      .delete( ClienteController.delete);
 
-clientesRouter.get("/:id/equipos", ClienteController.getEquipos);
+     clientesRouter.get("/:id/ordenes", ClienteController.getOrdenes);
 
-clientesRouter.get("/:id/ordenes", ClienteController.getOrdenes);
+     clientesRouter.get("/:id/equipos", ClienteController.getEquipos);     //   OPCIONAL

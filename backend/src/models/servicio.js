@@ -6,7 +6,7 @@ export class NotaServicioModel {
         return result.rows;
     }
 
-    static async getByOrden(id_orden) {
+    static async getById(id_orden) {
         const result = await query('SELECT * FROM nota_servicio WHERE id_orden = $1', [id_orden]);
         return result.rows[0];
     }
