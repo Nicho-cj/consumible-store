@@ -1,23 +1,45 @@
 import { query } from "../config/db.js";
 
 export class EquipoModel {
+    // @REVISAR: whitelist de columnas permitidas para filtros (evita inyeccion SQL por nombre de columna)
+    static #ALLOWED_FILTERS = ['nro_serial', 'marca', 'modelo'];
+
     static async getAll(filters = {}) {
         let consulta = 'SELECT * FROM equipo'
         const values = []
         const conditions = [];
 
-        const filterKeys = Object.keys(filters);
+        const filterKeys = Object.keys(filters)
+            // @REVISAR: solo se permiten columnas conocidas. Antes cualquier key se interpolaba en el SQL (inyeccion SQL)
+            .filter((key) => EquipoModel.#ALLOWED_FILTERS.includes(key));
+
         if (filterKeys.length > 0) {
             filterKeys.forEach((key, index) => {
-                filters[key] = `%${filters[key]}%`
-                values.push(filters[key]);
-                conditions.push(`${key} LIKE $${index + 1}`);
+                values.push(`%${filters[key]}%`);
+                conditions.push(`${key} ILIKE $${index + 1}`);
             });
             consulta += ` WHERE ${conditions.join(' AND ')}`;
         }
+        consulta += ' ORDER BY id_equipo DESC';
 
         const result = await query(consulta, values);
         return result.rows;
+    }
+
+    // @REVISAR: nuevo metodo - resuelve la busqueda por numero serial (clave de negocio)
+    static async getBySerial(nro_serial) {
+        const result = await query(
+            `SELECT e.*, COALESCE(
+                json_agg(distinct o) FILTER (WHERE o.id_orden IS NOT NULL),
+                '[]'
+             ) AS ordenes
+             FROM equipo e
+             LEFT JOIN orden_servicio o ON o.id_equipo = e.id_equipo
+             WHERE e.nro_serial = $1
+             GROUP BY e.id_equipo`,
+            [nro_serial]
+        );
+        return result.rows[0];
     }
 
     static async getById(id_equipo) {
@@ -50,7 +72,11 @@ export class EquipoModel {
         const values = [];
         let index = 1;
 
+        // @REVISAR: whitelist de columnas permitidas para UPDATE (evita inyeccion SQL por nombre de columna)
+        const allowed = ['nro_serial', 'marca', 'modelo', 'descripcion'];
+
         for (const [key, value] of Object.entries(data)) {
+            if (!allowed.includes(key)) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;

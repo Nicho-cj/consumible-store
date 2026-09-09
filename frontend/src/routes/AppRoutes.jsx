@@ -1,4 +1,5 @@
-// src/routes/AppRoutes.jsx
+// @REVISAR: rutas actualizadas - login conectado al backend, sesion persistida en localStorage
+// y cerrado de sesion.
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 
@@ -12,25 +13,32 @@ import ReportesPage from '../pages/ReportesPage';
 import LoginPage from '../pages/LoginPage';
 import TecnicosOrdenesPage from '../pages/TecnicosOrdenesPage';
 
-const AppRoutes = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
+const AppRoutes = ({
+    currentRole,
+    currentUser,
+    onRoleChange,
+    onLogout,
+    onLoginAdmin,
+    onAccessTechnician,
+    onOpenNewOrderModal,
+}) => {
     const navigate = useNavigate();
 
-    // Handlers para la autenticación
-    const handleLoginAdmin = (credentials) => {
-        console.log('Login Admin:', credentials);
+    const handleLoginAdmin = async (credentials) => {
+        await onLoginAdmin(credentials);
         onRoleChange('ADMIN_RECEPCION');
         navigate('/dashboard');
     };
 
     const handleAccessTechnician = () => {
-        console.log('Acceso Técnico');
+        onAccessTechnician();
         onRoleChange('TECNICO');
-        navigate('/tecnico'); // O a la ruta /tecnico si vas a crear una vista independiente
+        navigate('/tecnico');
     };
 
     return (
         <Routes>
-            {/* Ruta pública del Login sin el Layout del Dashboard */}
+            {/* Ruta publica del Login sin el Layout */}
             <Route
                 path="/login"
                 element={
@@ -41,31 +49,47 @@ const AppRoutes = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
                 }
             />
 
-            {/* Rutas protegidas dentro del Layout administrativo */}
+            {/* Rutas dentro del Layout administrativo */}
             <Route
                 element={
                     <Layout
                         currentRole={currentRole}
+                        currentUser={currentUser}
                         onRoleChange={onRoleChange}
+                        onLogout={onLogout}
                         onOpenNewOrderModal={onOpenNewOrderModal}
                     />
                 }
             >
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                {/* Si no hay sesion, redirigir al login */}
+                <Route path="/" element={currentRole ? <Navigate to={currentRole === 'TECNICO' ? '/tecnico' : '/dashboard'} replace /> : <Navigate to="/login" replace />} />
 
                 <Route
                     path="/dashboard"
-                    element={<DashboardPage onOpenNewOrderModal={onOpenNewOrderModal} />}
+                    element={
+                        currentRole === 'ADMIN_RECEPCION'
+                            ? <DashboardPage onOpenNewOrderModal={onOpenNewOrderModal} />
+                            : <Navigate to="/login" replace />
+                    }
                 />
 
                 <Route
                     path="/ordenes"
                     element={<OrdenesPage onOpenNewOrderModal={onOpenNewOrderModal} />}
                 />
-                <Route path="/clientes" element={<ClientesPage />} />
-                <Route path="/tecnicos" element={<TecnicosPage />} />
+                <Route
+                    path="/clientes"
+                    element={currentRole === 'ADMIN_RECEPCION' ? <ClientesPage /> : <Navigate to="/login" replace />}
+                />
+                <Route
+                    path="/tecnicos"
+                    element={currentRole === 'ADMIN_RECEPCION' ? <TecnicosPage /> : <Navigate to="/login" replace />}
+                />
                 <Route path="/equipos" element={<EquiposPage />} />
-                <Route path="/reportes" element={<ReportesPage />} />
+                <Route
+                    path="/reportes"
+                    element={currentRole === 'ADMIN_RECEPCION' ? <ReportesPage /> : <Navigate to="/login" replace />}
+                />
                 <Route path="/tecnico" element={<TecnicosOrdenesPage />} />
 
                 <Route

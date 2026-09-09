@@ -6,9 +6,26 @@ export class OrdenModel {
         return result.rows;
     }
 
+    // @REVISAR: metodo nuevo - retorna las ordenes de un tecnico, opcionalmente filtradas por estado
+    static async getByTecnico(id_tecnico, estado) {
+        let consulta = 'SELECT o.* FROM orden_servicio o WHERE o.id_tecnico = $1';
+        const values = [id_tecnico];
+
+        if (estado) {
+            consulta += ' AND o.estado = $2';
+            values.push(estado);
+        }
+
+        consulta += ' ORDER BY o.id_orden DESC';
+
+        const result = await query(consulta, values);
+        return result.rows;
+    }
+
     static async getById(id_orden) {
         const result = await query('SELECT * FROM orden_servicio WHERE id_orden = $1', [id_orden]);
-        return result.rows;
+        // @REVISAR: BUG corregido - retornaba result.rows (array) en vez de result.rows[0] (objeto). El frontend recibía [{...}] en vez de {...}
+        return result.rows[0];
     }
 
     static async create(data) {
@@ -22,6 +39,21 @@ export class OrdenModel {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
             [codigo_orden, tipo_servicio, falla_reportada, contador_inicio, cotizacion_aprobada, monto_cobro, id_cliente, id_equipo, id_usuario_recep, id_tecnico]
         );
+        return result.rows[0];
+    }
+
+    // @REVISAR: metodo nuevo - crea la nota_servicio vacia vinculada a una orden (al asignar tecnico)
+    static async crearNotaServicio(id_orden) {
+        const result = await query(
+            `INSERT INTO nota_servicio (id_orden) VALUES ($1) RETURNING *`,
+            [id_orden]
+        );
+        return result.rows[0];
+    }
+
+    // @REVISAR: metodo nuevo - retorna la nota_servicio de una orden (o null si no existe)
+    static async getNotaServicio(id_orden) {
+        const result = await query('SELECT * FROM nota_servicio WHERE id_orden = $1', [id_orden]);
         return result.rows[0];
     }
 
@@ -46,7 +78,15 @@ export class OrdenModel {
         const values = [];
         let index = 1;
 
+        // @REVISAR: whitelist de columnas permitidas para UPDATE (evita inyeccion SQL por nombre de columna)
+        const allowed = [
+            'estado', 'cotizacion_aprobada', 'monto_cobro', 'contador_inicio',
+            'id_tecnico', 'fecha_salida', 'motivo_cambio_tecnico', 'numero_factura',
+            'falla_reportada', 'tipo_servicio'
+        ];
+
         for (const [key, value] of Object.entries(data)) {
+            if (!allowed.includes(key)) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;
@@ -92,7 +132,8 @@ export class OrdenModel {
         return result.rows
     }
 
-    static async getRespuestos(id_orden) {
+    // @REVISAR: typo corregido - era getRespuestos, ahora getRepuestos
+    static async getRepuestos(id_orden) {
         const result = await query('SELECT * FROM detalle_repuesto WHERE id_orden = $1', [id_orden])
         return result.rows
     }

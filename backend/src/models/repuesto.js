@@ -36,7 +36,11 @@ export class DetalleRepuestoModel {
         const values = [];
         let index = 1;
 
+        // @REVISAR: whitelist de columnas permitidas para UPDATE (evita inyeccion SQL por nombre de columna)
+        const allowed = ['nombre', 'descripcion', 'cantidad'];
+
         for (const [key, value] of Object.entries(data)) {
+            if (!allowed.includes(key)) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;

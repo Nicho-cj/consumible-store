@@ -2,7 +2,7 @@ import { query } from "../config/db.js";
 
 export class UsuarioModel {
     static async getAll() {
-        const result = await query('SELECT * FROM usuario');
+        const result = await query('SELECT * FROM usuario ORDER BY id_usuario DESC');
         return result.rows;
     }
 
@@ -11,20 +11,26 @@ export class UsuarioModel {
         return result.rows[0];
     }
 
+    // @REVISAR: nuevo metodo - busca por nombre para login. Retorna usuario con contrasena hasheada
+    static async getByNombre(nombre) {
+        const result = await query('SELECT * FROM usuario WHERE nombre = $1 AND activo = TRUE', [nombre]);
+        return result.rows[0];
+    }
+
     static async create(data) {
-        const { nombre, activo } = data;
+        const { nombre, contrasena, rol, activo } = data;
         const result = await query(
-            `INSERT INTO usuario (nombre, activo) VALUES ($1, $2) RETURNING *`,
-            [nombre, activo ?? true]
+            `INSERT INTO usuario (nombre, contrasena, rol, activo) VALUES ($1, $2, $3, $4) RETURNING *`,
+            [nombre, contrasena, rol, activo ?? true]
         );
         return result.rows[0];
     }
 
     static async update(id_usuario, data) {
-        const { nombre, activo } = data;
+        const { nombre, contrasena, rol, activo } = data;
         const result = await query(
-            `UPDATE usuario SET nombre = $1, activo = $2 WHERE id_usuario = $3 RETURNING *`,
-            [nombre, activo, id_usuario]
+            `UPDATE usuario SET nombre = $1, contrasena = $2, rol = $3, activo = $4 WHERE id_usuario = $5 RETURNING *`,
+            [nombre, contrasena, rol, activo, id_usuario]
         );
         return result.rows[0];
     }
@@ -34,7 +40,11 @@ export class UsuarioModel {
         const values = [];
         let index = 1;
 
+        // @REVISAR: whitelist de columnas permitidas para UPDATE. La contrasena se gestiona aparte (bcrypt)
+        const allowed = ['nombre', 'activo'];
+
         for (const [key, value] of Object.entries(data)) {
+            if (!allowed.includes(key)) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;
@@ -56,7 +66,7 @@ export class UsuarioModel {
     }
 
     static async getOrdenes(id_usuario) {
-        const result = await query('SELECT * FROM orden_servicio WHERE id_usuario_recep = $1', [id_usuario]);
+        const result = await query('SELECT * FROM orden_servicio WHERE id_usuario_recep = $1 ORDER BY id_orden DESC', [id_usuario]);
         return result.rows;
     }
 }

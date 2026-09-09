@@ -13,6 +13,7 @@ tecnicosRouter.route("/:id")
      .get(TecnicoController.getById)
      .put(validate(tecnicoSchema), TecnicoController.update)
      .patch(validatePartial(tecnicoSchema), TecnicoController.patch)
-     .delete(TecnicoController, TecnicoController.delete);
+     // @REVISAR: BUG corregido - se pasaba la clase TecnicoController como middleware (crasheaba el endpoint). Debe ser solo TecnicoController.delete
+     .delete(TecnicoController.delete);
 
 tecnicosRouter.get("/:id/ordenes", TecnicoController.getOrdenes);

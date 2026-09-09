@@ -19,7 +19,7 @@ CREATE TABLE usuario (
     nombre          VARCHAR(60) NOT NULL,
     rol             VARCHAR(30) NOT NULL,
     activo          BOOLEAN NOT NULL DEFAULT TRUE,
-    contraseña      VARCHAR(60)
+    contrasena      VARCHAR(60)
 );
 
 CREATE TABLE tecnico (

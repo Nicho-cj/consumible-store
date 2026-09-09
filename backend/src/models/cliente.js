@@ -1,20 +1,26 @@
 import { query } from "../config/db.js";
 
 export class ClienteModel {
+    // @REVISAR: whitelist de columnas permitidas para filtros (evita inyeccion SQL por nombre de columna)
+    static #ALLOWED_FILTERS = ['ci_rif', 'nombre_completo', 'telefono'];
+
     static async getAll(filters = {}) {
         let consulta = 'SELECT * FROM cliente'
         const values = []
         const conditions = [];
 
-        const filterKeys = Object.keys(filters);
+        // @REVISAR: solo se permiten columnas conocidas. Antes cualquier key se interpolaba en el SQL (inyeccion SQL)
+        const filterKeys = Object.keys(filters)
+            .filter((key) => ClienteModel.#ALLOWED_FILTERS.includes(key));
+
         if (filterKeys.length > 0) {
             filterKeys.forEach((key, index) => {
-                filters[key] = `%${filters[key]}%`
-                values.push(filters[key]);
-                conditions.push(`${key} LIKE $${index + 1}`);
+                values.push(`%${filters[key]}%`);
+                conditions.push(`${key} ILIKE $${index + 1}`);
             });
             consulta += ` WHERE ${conditions.join(' AND ')}`;
         }
+        consulta += ' ORDER BY id_cliente DESC';
 
         const result = await query(consulta, values);
         return result.rows;
@@ -35,7 +41,6 @@ export class ClienteModel {
         return result.rows[0];
     }
 
-
     static async update(id_cliente, data) {
         const { ci_rif, nombre_completo, telefono, direccion } = data;
         const result = await query(
@@ -46,19 +51,16 @@ export class ClienteModel {
         return result.rows[0];
     }
 
-    // static async #columns() {
-    //     const colmuns = await query(
-    //         ``
-    //     )
-    //     return colmuns.rows
-    // }
-
     static async patch(id_cliente, data) {
         const fields = [];
         const values = [];
         let index = 1;
 
+        // @REVISAR: whitelist de columnas permitidas para UPDATE (evita inyeccion SQL por nombre de columna)
+        const allowed = ['ci_rif', 'nombre_completo', 'telefono', 'direccion'];
+
         for (const [key, value] of Object.entries(data)) {
+            if (!allowed.includes(key)) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;
@@ -80,7 +82,7 @@ export class ClienteModel {
     }
 
     static async getOrdenes(id_cliente) {
-        const result = await query('SELECT * FROM orden_servicio WHERE id_cliente = $1', [id_cliente]);
+        const result = await query('SELECT * FROM orden_servicio WHERE id_cliente = $1 ORDER BY id_orden DESC', [id_cliente]);
         return result.rows;
     }
 

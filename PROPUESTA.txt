@@ -1,0 +1,259 @@
+hojas de cálculo de Excel para la recepción y registros manuscritos en cuadernos para el 
+seguimiento técnico. Esta metodología genera cuellos de botella operativos, pérdida de 
+trazabilidad e ineficiencias financieras. 
+Proceso Mecanismo 
+Actual Problema Identificado Impacto Operativo
+Recepción e 
+Ingreso
+Formatos en 
+Excel / Planillas 
+impresas
+Registro duplicado y falta de 
+validación de datos de 
+clientes/equipos en tiempo real.
+Propenso a errores en 
+números de serial y datos 
+de contacto.
+Diagnóstico y 
+Reparación
+Cuadernos 
+físicos por 
+técnico
+Información aislada; no hay 
+visibilidad del estado real del 
+equipo sin consultar 
+directamente al técnico.
+Retrasos en la atención e 
+imposibilidad de generar 
+métricas de rendimiento.
+Control de 
+Repuestos
+Solicitud verbal 
+o notas de papel
+Falta de vinculación directa 
+entre el inventario utilizado y la
+orden de servicio 
+correspondiente.
+Pérdida de repuestos y 
+discrepancias en los costos
+finales del servicio.
+Cierre y 
+Liquidación
+Conteo manual a
+fin de 
+semana/mes
+Cálculo manual de comisiones 
+por técnico y conciliación de 
+pagos propensa a errores.
+Fricción interna en el 
+equipo técnico y demora 
+en la entrega de reportes 
+financieros.
+Principales Vulnerabilidades del Esquema Actual
+• Falta de Trazabilidad por Serial: Dificultad para verificar historial de reparaciones previas
+o validar garantías de equipos ingresados con anterioridad.
+• Información Descentralizada: Imposibilidad de consultar el estado de una orden desde 
+múltiples puntos de la tienda o LAN simultáneamente. 
+• Vulnerabilidad de Datos: Alto riesgo de pérdida de información por deterioro de registros
+físicos o corrupción de archivos Excel locales.
+Solución
+Para resolver las ineficiencias del esquema actual, se plantea el desarrollo e implementación del 
+Sistema de Control de Órdenes de Servicio Técnico, una aplicación web centralizada diseñada 
+para operar dentro de la red local (LAN) de la empresa. Esta solución automatiza y digitaliza el 
+ciclo de vida completo de cada servicio técnico, desde la recepción del equipo hasta su entrega 
+final y liquidación financiera. 
+Módulos Principales del Sistema
+1. Gestión de Clientes y Equipos:
+• Centralización de la información del cliente (Rif/Cédula, nombre, teléfono, 
+dirección).
+• Registro unificado de equipos asociados a su número de serial y tipo de 
+dispositivo (impresoras, fotocopiadoras, etc.), manteniendo un historial completo 
+de reparaciones previas y contadores de páginas/impresiones.
+2. Gestión de Órdenes de Servicio (Prioridad):
+• Creación de órdenes de servicio con generación automática de correlativo y 
+comprobante imprimible de recepción para el cliente.
+• Flujo de estados estructurado: Recibido => En Diagnóstico => Esperando 
+Aprobación => En Reparación => Listo para Entrega => Entregado / Finalizado.
+• Asignación de técnicos responsables por orden.
+3. Control de Diagnósticos, Repuestos y Servicios:
+• Registro del informe técnico y fallas detectadas.
+• Carga de mano de obra y repuestos/insumos utilizados en la orden con cálculo 
+automático de subtotal y total.
+4. Liquidación Financiera y Reportes Operativos:
+• Generación de reportes de rendimiento y comisiones/monto a liquidar por técnico.
+• Panel de control (Dashboard) con métricas clave: órdenes pendientes, ingresos del
+día y volumen de trabajo por técnico.
+Beneficios Clave
+• Centralización de la Información: Múltiples usuarios (recepción, técnicos y 
+administración) acceden simultáneamente a los mismos datos en tiempo real desde la red 
+local. 
+• Trazabilidad Garantizada: Control estricto por número de serial que previene errores de 
+garantía e historial disperso.
+• Reducción de Tiempos y Errores: Eliminación del cálculo manual de comisiones y del 
+doble registro en papel/Excel.
+• Seguridad de Datos: Base de datos relacional (PostgreSQL) con respaldos estructurados y
+roles de acceso definidos
+Usuarios Involucrados
+Para garantizar la seguridad de la información y adaptar el sistema a la estructura operativa del 
+taller, se establece un esquema de accesos basado en dos perfiles de usuario. 
+Administrador / Recepción
+Perfil integral que abarca la gestión de atención al cliente, recepción de equipos, facturación, 
+control de usuarios y supervisión financiera global. Funciones Clave:
+• Registrar clientes y dar de alta nuevos equipos por serial.
+• Crear la Orden de Servicio inicial con los datos del cliente, equipo y falla reportada.
+• Registrar la aceptación o rechazo de la cotización por parte del cliente.
+• Registrar el monto final de cobro del servicio.
+• Modificar el estatus a Entregado / Cerrado tras la recepción/firma del cliente.
+• Generar e imprimir los reportes de correlación de servicios por técnico para efectos de 
+pago
+Técnico de Taller
+Personal enfocado exclusivamente en la ejecución de diagnósticos, mantenimiento y reparación 
+de los equipos asignados. Funciones Clave:
+• Consultar las órdenes asignadas a su nombre.
+• Actualizar el estatus de la orden (En Revisión / Diagnóstico, Proceso Técnico, Listo para 
+Entrega).
+• Registrar la descripción del diagnóstico, falla real y trabajo técnico realizado.
+• Registrar los repuestos/materiales utilizados y pendientes en la Nota de Servicio.
+• Ingresar el contador de páginas final al término de las pruebas.
+Flujo de Trabajo
+Tras el análisis de del flujo de trabajo mediante observación directa se determinó el siguiente 
+flujo:
+Determinación de Requerimientos
+Requerimientos Funcionales (RF)
+Gestión de Clientes y Equipos
+• RF-01: Registrar Cliente. El sistema debe permitir registrar la información básica del 
+cliente, incluyendo C.I./RIF, Nombre o Razón Social, Persona de Contacto, Teléfono y 
+Dirección.
+• RF-02: Consultar y Editar Cliente. El sistema debe permitir la búsqueda de clientes por 
+C.I./RIF o Nombre, así como la actualización de sus datos de contacto.
+• RF-03: Registrar Equipo. El sistema debe permitir dar de alta la ficha técnica de un 
+equipo asociándole un número de Serial único, Descripción, Marca y Modelo.
+• RF-04: Consultar Historial de Equipo. El sistema debe permitir consultar el expediente 
+técnico de un equipo a través de su número de Serial, mostrando los servicios previos 
+realizados.
+Gestión de Órdenes de Servicio
+• RF-05: Crear Orden de Servicio. El sistema debe registrar una nueva orden asociándole 
+un código correlativo automático, fecha de ingreso, cliente, equipo, tipo de servicio 
+(Revisión, Mantenimiento Preventivo, Mantenimiento Correctivo), falla reportada, 
+contador de impresiones inicial, personal que recibe y técnico asignado.
+• RF-06: Gestionar Estatus de la Orden. El sistema debe permitir actualizar el estado 
+operativo de la orden siguiendo la secuencia: 
+Registrado => En Revisión / Diagnóstico => Solución y 
+Cotización => Proceso Técnico => Listo para Entrega => 
+Entregado / Cerrado.
+• RF-07: Registrar Respuesta de Cotización. El sistema debe permitir registrar si el cliente 
+aprueba o rechaza el presupuesto presentado en la etapa de Solución y Cotización.
+Control Técnico y Entrega
+• RF-08: Registrar Diagnóstico y Trabajo Realizado. El sistema debe permitir al técnico 
+ingresar la descripción detallada del diagnóstico de la falla y el trabajo técnico ejecutado. 
+Carácter obligatorio: Si no se completan estos datos, el sistema no permitirá avanzar la 
+orden de estado.
+• RF-09: Registrar Repuestos y Materiales. El sistema debe permitir registrar el listado de 
+repuestos o materiales utilizados en la reparación, así como aquellos repuestos que 
+queden marcados como pendientes. Carácter obligatorio: Campo requerido para el avance
+de la orden.
+• RF-10: Registrar Cierre y Monto del Servicio. El sistema debe permitir ingresar el 
+contador de impresiones final de prueba, el monto total cobrado por el servicio y la 
+confirmación de la recepción por parte del cliente para pasar a estado Entregado / 
+Cerrado.
+Reportes e Impresión
+• RF-11: Generar Comprobante de Orden y Nota de Servicio. El sistema debe permitir la 
+generación de la nota de servicio para el taller, asociando un código de barras único a la 
+orden para su posterior escaneo. Asimismo, generará automáticamente un mensaje 
+estructurado con los detalles de la orden, habilitando la opción de copiado directo para 
+envío manual al cliente.
+• RF-12: Generar Reporte de Servicios por Técnico. El sistema debe generar un reporte por
+rango de fechas que consolide los servicios finalizados por cada técnico, detallando los 
+códigos de orden, trabajos realizados y montos registrados para facilitar la correlación de 
+sus pagos.
+Requerimientos No Funcionales (RNF)
+Usabilidad
+• RNF-01: Interfaz Web Intuitiva. La interfaz debe estructurarse mediante formularios 
+claros y campos autocompletables para minimizar la transcripción repetitiva de datos.
+• RNF-02: Facilidad de Aprendizaje. El sistema debe ser lo suficientemente sencillo para 
+que el personal pueda operarlo tras una capacitación básica no mayor a 3 horas.
+Rendimiento y Disponibilidad
+• RNF-03: Tiempo de Respuesta. El tiempo de respuesta del sistema en búsquedas de 
+clientes, equipos o generación de reportes no debe superar los 3 segundos en red local 
+(LAN).
+• RNF-04: Disponibilidad. El sistema debe estar disponible durante la jornada laboral con 
+una operatividad mínima del 90% en horas de oficina.
+Seguridad e Integridad
+• RNF-05: Control de Acceso por Roles. El sistema debe restringir el acceso a los módulos 
+mediante autenticación con usuario y contraseña, limitando las funciones según el rol 
+(Administrador/Recepción o Técnico de Taller).
+• RNF-06: Respaldos de Información. El sistema debe permitir la realización de copias de 
+seguridad de la base de datos para prevenir la pérdida de registros históricos.
+• RNF-07: Ventana de Confirmación (Undo). El sistema debe implementar un margen de 
+confirmación de 5 segundos tras el guardado de una orden. Durante ese lapso se mostrará 
+un botón accesible de <Deshacer> para cancelar la operación sin afectar la base de 
+datos.
+Reglas de Negocio (RN)
+• RN-01 (Unicidad del Serial del Equipo): No se puede registrar un equipo sin un número 
+de Serial válido. Cada Serial debe ser único dentro de la base de datos para garantizar la 
+trazabilidad histórica del dispositivo.
+• RN-02 (Transición Secuencial de Estatus): Una Orden de Servicio no puede saltarse 
+etapas del flujo; debe avanzar obligatoriamente en la secuencia establecida:
+Registrado => En Revisión / Diagnóstico => Solución y Cotización => Proceso Técnico 
+=> Listo para Entrega => Entregado / Cerrado
+• RN-03 (Condición para Proceso Técnico): Una orden no puede pasar al estatus 
+Proceso Técnico si el cliente no ha aprobado previamente la propuesta en la etapa 
+de Solución y Cotización.
+• RN-04 (Cierre con Datos Operativos Completos): Para cambiar una orden al estatus 
+Entregado / Cerrado, el sistema exigirá obligatoriamente haber registrado:
+1. Diagnóstico final y trabajo realizado.
+2. Contador de impresiones final.
+3. Monto de cobro del servicio.
+• RN-05 (Plazo Límite de Retiro de Equipos): Transcurridos 14 días continuos (2 semanas)
+a partir de la fecha en que la orden pasa a estatus Listo para Entrega, la empresa 
+no se hace responsable por el resguardo ni por el estado del equipo en el taller.
+Estudio de Factibilidad
+Factibilidad Técnica
+El análisis determina que Consumible Store, C.A. cuenta con los recursos de hardware, 
+conectividad y base tecnológica suficientes para implementar el sistema sin requerir inversiones 
+complejas en infraestructura
+• Infraestructura Existente: Los equipos actuales cumplen ampliamente con los requisitos 
+mínimos para ejecutar un entorno web local.
+• Arquitectura y Stack Tecnológico:
+◦ Frontend: Interfaz de usuario desarrollada con React, complementada con HTML5, 
+CSS3 y JavaScript para garantizar una navegación fluida, modular e intuitiva.
+◦ Backend: Servidor construido sobre Node.js, aprovechando su modelo asíncrono para
+un procesamiento ágil y de alto rendimiento.
+◦ Base de Datos: Motor relacional PostgreSQL, que garantiza alta concurrencia, 
+seguridad e integridad referencial de los registros.
+• Despliegue Local (LAN): El sistema operará alojado en la red interna del local (C.C. 
+Bolívar, Puerto Ordaz). Esto elimina la dependencia del servicio de internet y asegura 
+tiempos de respuesta inmediatos.
+• Capacidad Técnica del Usuario: El perfil administrador posee sólida competencia 
+informática, lo que garantiza una adopción rápida de la plataforma.
+Factibilidad Económica
+El proyecto es altamente viable. Exige un desembolso financiero mínimo frente al impacto 
+directo en la reducción de costos operativos, tiempos de gestión y prevención de errores.
+• Estructura de Costos de Desarrollo:
+◦ Inversión Total: Fijada en $100.00 USD por los honorarios de un equipo de dos 
+desarrolladores.
+◦ Condiciones de Pago: Anticipo del 50% (negociable) al iniciar el proyecto, 
+liquidándose el saldo restante contra entrega.
+◦ Cero Costos Adicionales: No se requiere adquisición de nuevo hardware ni pago de 
+licencias, ya que se aprovecha la infraestructura actual y se utilizan tecnologías de 
+código abierto.
+• Beneficios y Retorno de Inversión (ROI):
+◦ Ahorro Administrativo: Eliminación de horas dedicadas a auditar cuadernos a fin de 
+mes y erradicación de la doble transcripción de datos.
+◦ Prevención de Pérdidas: Mitigación de errores financieros por cobros indebidos, mala
+contabilización de repuestos o pérdida de garantías.
+◦ Amortización Rápida: Basta con que el sistema genere un ahorro operativo 
+equivalente a $40.00 USD mensuales (en tiempo y prevención de errores) para que la 
+empresa recupere el 100% de la inversión en un estimado de dos a tres meses de 
+operación.
+Factibilidad Operativa
+La solución propuesta no altera la lógica comercial de la empresa; por el contrario, la formaliza y
+optimiza al integrar la Orden y la Nota de Servicio en un solo flujo digital.
+• Alineación con el Flujo de Trabajo: El sistema respeta la secuencia natural de la tienda 
+(Registrado => Diagnóstico => Cotización => Reparación => Entrega).
+• Gestión del Cambio: El Administrador, como usuario clave, respalda el proyecto. La 
+posible resistencia inicial de los técnicos (acostumbrados al papel) se mitigará mediante 
+sesiones cortas de inducción lideradas internamente.
+• Usabilidad: La interfaz web adaptativa y los formularios limpios reducen 
+significativamente el esfuerzo cognitivo al registrar diagnósticos y cambiar estatus, 
+asegurando que la herramienta no interrumpa la dinámica diaria de atención al público.

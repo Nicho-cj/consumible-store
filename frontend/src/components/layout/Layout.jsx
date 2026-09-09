@@ -2,9 +2,8 @@ import { Outlet } from 'react-router-dom';
 import NavBar from './NavBar';
 import Header from './Header'
 
-
-
-const Layout = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
+// @REVISAR: Layout actualizado - recibe currentUser y onLogout para mostrarlos en la UI
+const Layout = ({ currentRole, currentUser, onRoleChange, onLogout, onOpenNewOrderModal }) => {
     const handleSearch = (query) => {
         console.log('Búsqueda global:', query);
     };
@@ -16,7 +15,11 @@ const Layout = ({ currentRole, onRoleChange, onOpenNewOrderModal }) => {
                 onOpenNewOrderModal={onOpenNewOrderModal}
             />
             <div className="flex-1 ml-[260px] min-h-screen flex flex-col">
-                <Header onSearch={handleSearch} />
+                <Header
+                    onSearch={handleSearch}
+                    currentUser={currentUser}
+                    onLogout={onLogout}
+                />
                 <main className="flex-1 p-6 overflow-y-auto">
                     <Outlet />
                 </main>

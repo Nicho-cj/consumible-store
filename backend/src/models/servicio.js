@@ -12,11 +12,12 @@ export class NotaServicioModel {
     }
 
     static async create(data) {
-        const { fecha_fin, diagnostico_falla, trabajo_realizado, contador_final, observaciones, id_orden } = data;
+        const { fecha_fin, diagnostico_falla, trabajo_realizado, contador_final, observaciones, id_orden, fecha_inicio } = data;
+        // @REVISAR: se agrego fecha_inicio al INSERT. Antes no se incluia (funcionaba por DEFAULT de la BD)
         const result = await query(
-            `INSERT INTO nota_servicio (fecha_fin, diagnostico_falla, trabajo_realizado, contador_final, observaciones, id_orden)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [fecha_fin, diagnostico_falla, trabajo_realizado, contador_final, observaciones, id_orden]
+            `INSERT INTO nota_servicio (fecha_inicio, fecha_fin, diagnostico_falla, trabajo_realizado, contador_final, observaciones, id_orden)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+            [fecha_inicio ?? new Date(), fecha_fin, diagnostico_falla, trabajo_realizado, contador_final, observaciones, id_orden]
         );
         return result.rows[0];
     }
@@ -36,7 +37,11 @@ export class NotaServicioModel {
         const values = [];
         let index = 1;
 
+        // @REVISAR: whitelist de columnas permitidas para UPDATE (evita inyeccion SQL por nombre de columna)
+        const allowed = ['fecha_fin', 'diagnostico_falla', 'trabajo_realizado', 'contador_final', 'observaciones'];
+
         for (const [key, value] of Object.entries(data)) {
+            if (!allowed.includes(key)) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;

@@ -2,7 +2,7 @@ import { query } from "../config/db.js";
 
 export class TecnicoModel {
     static async getAll() {
-        const result = await query('SELECT * FROM tecnico');
+        const result = await query('SELECT * FROM tecnico ORDER BY id_tecnico DESC');
         return result.rows;
     }
 
@@ -34,7 +34,11 @@ export class TecnicoModel {
         const values = [];
         let index = 1;
 
+        // @REVISAR: whitelist de columnas permitidas para UPDATE (evita inyeccion SQL por nombre de columna)
+        const allowed = ['nombre', 'activo'];
+
         for (const [key, value] of Object.entries(data)) {
+            if (!allowed.includes(key)) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;
@@ -56,7 +60,7 @@ export class TecnicoModel {
     }
 
     static async getOrdenes(id_tecnico) {
-        const result = await query('SELECT * FROM orden_servicio WHERE id_tecnico = $1', [id_tecnico]);
+        const result = await query('SELECT * FROM orden_servicio WHERE id_tecnico = $1 ORDER BY id_orden DESC', [id_tecnico]);
         return result.rows;
     }
 }

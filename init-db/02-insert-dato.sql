@@ -9,9 +9,11 @@ INSERT INTO equipo (nro_serial, marca, modelo, descripcion) VALUES
 ('SN-EPSON-889', 'Epson', 'L3210', 'Impresora multifuncional de tanque de tinta'),
 ('SN-CANON-441', 'Canon', 'imageRUNNER 2525', 'Fotocopiadora multifuncional láser');
 
-INSERT INTO usuario (nombre, rol, activo, contraseña) VALUES
-('Ana Rodríguez', 'Recepcionista', TRUE, 'hash_contrasena_1'),
-('Carlos Administrador', 'Admin', TRUE, 'hash_contrasena_2');
+-- @REVISAR: roles alineados con el esquema de la app (ADMIN_RECEPCION / TECNICO).
+-- Las contrasenas placeholder no son validas para login. El admin real se inserta en 03-insert-admin.sql
+INSERT INTO usuario (nombre, rol, activo, contrasena) VALUES
+('Ana Rodríguez', 'ADMIN_RECEPCION', TRUE, NULL),
+('Carlos Administrador', 'ADMIN_RECEPCION', TRUE, NULL);
 
 INSERT INTO tecnico (nombre, activo) VALUES
 ('Pedro Martínez', TRUE),
