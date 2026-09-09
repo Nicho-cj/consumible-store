@@ -1,5 +1,5 @@
-// @REVISAR: rutas actualizadas - login conectado al backend, sesion persistida en localStorage
-// y cerrado de sesion.
+// @REVISAR: rutas - login conectado al backend, sesion por pestana (sessionStorage)
+// y cerrado de sesion. Cada pestaña/ventana es independiente (varias vistas en simultaneo).
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 
@@ -25,8 +25,8 @@ const AppRoutes = ({
     const navigate = useNavigate();
 
     const handleLoginAdmin = async (credentials) => {
-        await onLoginAdmin(credentials);
-        onRoleChange('ADMIN_RECEPCION');
+        const data = await onLoginAdmin(credentials);
+        onRoleChange(data.usuario.rol);
         navigate('/dashboard');
     };
 
@@ -34,6 +34,11 @@ const AppRoutes = ({
         onAccessTechnician();
         onRoleChange('TECNICO');
         navigate('/tecnico');
+    };
+
+    const handleLogoutTechnical = () => {
+        onLogout();
+        navigate('/login');
     };
 
     return (
@@ -67,7 +72,7 @@ const AppRoutes = ({
                 <Route
                     path="/dashboard"
                     element={
-                        currentRole === 'ADMIN_RECEPCION'
+                        currentRole === 'ADMIN_RECEPCION' && currentUser
                             ? <DashboardPage onOpenNewOrderModal={onOpenNewOrderModal} />
                             : <Navigate to="/login" replace />
                     }
@@ -75,7 +80,7 @@ const AppRoutes = ({
 
                 <Route
                     path="/ordenes"
-                    element={<OrdenesPage onOpenNewOrderModal={onOpenNewOrderModal} />}
+                    element={currentRole ? <OrdenesPage onOpenNewOrderModal={onOpenNewOrderModal} /> : <Navigate to="/login" replace />}
                 />
                 <Route
                     path="/clientes"
@@ -85,12 +90,12 @@ const AppRoutes = ({
                     path="/tecnicos"
                     element={currentRole === 'ADMIN_RECEPCION' ? <TecnicosPage /> : <Navigate to="/login" replace />}
                 />
-                <Route path="/equipos" element={<EquiposPage />} />
+                <Route path="/equipos" element={currentRole ? <EquiposPage /> : <Navigate to="/login" replace />} />
                 <Route
                     path="/reportes"
                     element={currentRole === 'ADMIN_RECEPCION' ? <ReportesPage /> : <Navigate to="/login" replace />}
                 />
-                <Route path="/tecnico" element={<TecnicosOrdenesPage />} />
+                <Route path="/tecnico" element={currentRole ? <TecnicosOrdenesPage onLogout={handleLogoutTechnical} /> : <Navigate to="/login" replace />} />
 
                 <Route
                     path="*"

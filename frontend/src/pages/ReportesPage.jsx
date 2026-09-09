@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import {
     DollarSign,
@@ -13,7 +13,8 @@ import {
     Calendar,
     FileText,
     Eye,
-    FileSpreadsheet
+    FileSpreadsheet,
+    RefreshCw
 } from 'lucide-react';
 import Card, { MetricCard } from '../components/common/Card';
 import Table from '../components/common/Table';
@@ -21,8 +22,8 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
 import { normalizeText } from '../utils/text';
-import { mockLiquidacionesData, mockAuditLogsData } from '../data/reportesData';
-import { mockTecnicos } from '../data/tecnicosData';
+import { reporteServicios, listAuditoria, descargarBackup } from '../api/reportes';
+import { listTecnicosPublicos } from '../api/entidades';
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -32,6 +33,122 @@ const formatDate = (dateStr) => {
     }
     return dateStr;
 };
+
+const ReportContent = ({
+    isModalView = false,
+    selectedTechnician = 'ALL',
+    startDate = '',
+    endDate = '',
+    rows = [],
+    total = 0,
+    resumen = [],
+}) => (
+    <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-8'}`}>
+        <div className="border-b-2 border-slate-900 pb-4 mb-4">
+            <div className="flex flex-row justify-between items-start">
+                <div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-[#97C719] rounded flex items-center justify-center text-white font-bold text-xs border border-black">CS</div>
+                        <h1 className="text-base font-black tracking-tight text-slate-900">CONSUMIBLE STORE, C.A.</h1>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium mt-0.5">RIF: J-40891234-5 | Soporte y Servicio Técnico Especializado</p>
+                    <p className="text-[10px] text-slate-500">C.C. Bolívar, Nivel PB, Local 12, Puerto Ordaz, Edo. Bolívar</p>
+                </div>
+                <div className="text-right text-[10px] text-slate-600 space-y-0.5 border-l border-slate-300 pl-3">
+                    <p><strong className="text-slate-800">Fecha Emisión:</strong> {new Date().toLocaleDateString('es-VE')} {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</p>
+                    <p><strong className="text-slate-800">Generado por:</strong> Administración / Recepción</p>
+                    <p><strong className="text-slate-800">Estatus:</strong> Servicios Finalizados / Cobrados</p>
+                </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-slate-200 text-center">
+                <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">Reporte de Detalles de Servicios para Liquidación</h2>
+            </div>
+        </div>
+
+        <div className="mb-4 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2 border border-slate-300 bg-slate-50 p-2.5 rounded">
+            <div>
+                <span className="text-slate-500 block text-[10px]">Técnico:</span>
+                <strong className="text-slate-900">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
+            </div>
+            <div>
+                <span className="text-slate-500 block text-[10px]">Rango de Fecha Ingreso:</span>
+                <strong className="text-slate-900">{startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}</strong>
+            </div>
+            <div>
+                <span className="text-slate-500 block text-[10px]">Total Servicios:</span>
+                <strong className="text-slate-900">{rows.length} Registros</strong>
+            </div>
+            <div>
+                <span className="text-slate-500 block text-[10px]">Monto Total Cobrado:</span>
+                <strong className="text-emerald-700 text-xs">${total.toFixed(2)}</strong>
+            </div>
+        </div>
+
+        <table className="w-full text-left text-[11px] border-collapse border border-slate-800 mb-4">
+            <thead>
+                <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[10px]">
+                    <th className="p-1.5 border border-slate-800 text-center w-24">N° Orden</th>
+                    <th className="p-1.5 border border-slate-800">Técnico</th>
+                    <th className="p-1.5 border border-slate-800">Cliente</th>
+                    <th className="p-1.5 border border-slate-800">Equipo y Serial</th>
+                    <th className="p-1.5 border border-slate-800">Trabajo Realizado</th>
+                    <th className="p-1.5 border border-slate-800 text-center w-24">Fecha Ingreso</th>
+                    <th className="p-1.5 border border-slate-800 text-right w-24">Monto Cobrado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows.length === 0 ? (
+                    <tr>
+                        <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
+                    </tr>
+                ) : (
+                    rows.map((row, idx) => (
+                        <tr key={row.id} className={`border-b border-slate-400 ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
+                            <td className="p-1.5 border border-slate-800 font-mono font-bold text-center text-slate-900">{row.codigo}</td>
+                            <td className="p-1.5 border border-slate-800 font-medium text-slate-800">{row.tecnico}</td>
+                            <td className="p-1.5 border border-slate-800 text-slate-800">{row.cliente}</td>
+                            <td className="p-1.5 border border-slate-800 text-slate-800">
+                                <div className="font-semibold">{row.equipo}</div>
+                                <div className="text-[9px] text-slate-600 font-mono">S/N: {row.serial}</div>
+                            </td>
+                            <td className="p-1.5 border border-slate-800 text-slate-700 leading-tight">
+                                <span>{row.trabajoRealizado}</span>
+                                {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
+                                    <div className="text-[9px] text-amber-800 font-medium">Repuesto: {row.repuestosUsados}</div>
+                                )}
+                            </td>
+                            <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
+                            <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
+                        </tr>
+                    ))
+                )}
+            </tbody>
+            <tfoot>
+                <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold">
+                    <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General Cobrado ({rows.length} Servicios):</td>
+                    <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">${total.toFixed(2)}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        {resumen.length > 0 && selectedTechnician === 'ALL' && (
+            <div className="mb-6 pt-2">
+                <h3 className="text-[10px] font-bold uppercase text-slate-700 mb-1">Consolidado por Técnico en el Período</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                    {resumen.map((t) => (
+                        <div key={t.nombre} className="border border-slate-300 p-1.5 rounded bg-slate-50">
+                            <span className="font-bold block text-slate-800 truncate">{t.nombre}</span>
+                            <div className="flex justify-between text-slate-600 mt-0.5">
+                                <span>{t.servicios} serv.</span>
+                                <strong className="text-slate-900">${t.totalCobrado.toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+    </div>
+);
 
 const ReportesPage = () => {
     const contentRef = useRef(null);
@@ -49,6 +166,64 @@ const ReportesPage = () => {
     const [logSearch, setLogSearch] = useState('');
     const [logModuleFilter, setLogModuleFilter] = useState('ALL');
 
+    const [reportes, setReportes] = useState([]);
+    const [tecnicos, setTecnicos] = useState([]);
+    const [logs, setLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [backupLoading, setBackupLoading] = useState(false);
+
+    useEffect(() => {
+        let cancel = false;
+        Promise.all([reporteServicios(), listTecnicosPublicos(), listAuditoria()])
+            .then(([reportesData, tecnicosData, logsData]) => {
+                if (cancel) return;
+                setReportes(reportesData);
+                setTecnicos(tecnicosData);
+                setLogs(logsData);
+            })
+            .catch((err) => {
+                if (!cancel) {
+                    console.error('Error cargando reportes:', err);
+                    setError(err.message);
+                }
+            })
+            .finally(() => {
+                if (!cancel) setLoading(false);
+            });
+        return () => { cancel = true; };
+    }, []);
+
+    const reload = () => {
+        setLoading(true);
+        Promise.all([reporteServicios(), listTecnicosPublicos(), listAuditoria()])
+            .then(([reportesData, tecnicosData, logsData]) => {
+                setReportes(reportesData);
+                setTecnicos(tecnicosData);
+                setLogs(logsData);
+                setError('');
+            })
+            .catch((err) => {
+                console.error('Error cargando reportes:', err);
+                setError(err.message);
+            })
+            .finally(() => setLoading(false));
+    };
+
+    const liquidaciones = reportes.map((r) => ({
+        id: r.id_orden,
+        codigo: r.codigo_orden,
+        tecnico: r.tecnico_nombre || 'Sin asignar',
+        tecnicoId: r.id_tecnico,
+        cliente: r.cliente_nombre || '-',
+        equipo: [r.marca, r.modelo].filter(Boolean).join(' ') || '-',
+        serial: r.nro_serial || '-',
+        trabajoRealizado: r.trabajo_realizado || r.diagnostico_falla || '-',
+        repuestosUsados: 'Ninguno',
+        fechaIngreso: r.fecha_ingreso ? r.fecha_ingreso.slice(0, 10) : '',
+        montoTotal: Number(r.monto_cobro) || 0,
+    }));
+
     const filterFields = [
         {
             id: 'tecnico',
@@ -58,7 +233,7 @@ const ReportesPage = () => {
             onChange: setSelectedTechnician,
             options: [
                 { label: 'Todos los Técnicos', value: 'ALL' },
-                ...mockTecnicos.map((t) => ({ label: t.nombre, value: t.nombre })),
+                ...tecnicos.map((t) => ({ label: t.nombre, value: String(t.id) })),
             ],
         },
         {
@@ -119,16 +294,18 @@ const ReportesPage = () => {
         }
     };
 
+    const selectedTechnicianNombre = useMemo(() => {
+        if (selectedTechnician === 'ALL') return 'Todos los Técnicos';
+        const t = tecnicos.find((x) => String(x.id) === selectedTechnician);
+        return t ? t.nombre : 'Técnico';
+    }, [selectedTechnician, tecnicos]);
+
     const filteredLiquidaciones = useMemo(() => {
-        return mockLiquidacionesData.filter((item) => {
-            const matchesTecnico = selectedTechnician === 'ALL' || item.tecnico === selectedTechnician;
+        return liquidaciones.filter((item) => {
+            const matchesTecnico = selectedTechnician === 'ALL' || String(item.tecnicoId) === selectedTechnician;
 
-            const itemDate = new Date(item.fechaIngreso);
-            const start = startDate ? new Date(startDate) : null;
-            const end = endDate ? new Date(endDate) : null;
-
-            const matchesStart = !start || itemDate >= start;
-            const matchesEnd = !end || itemDate <= end;
+            const matchesStart = !startDate || item.fechaIngreso >= startDate;
+            const matchesEnd = !endDate || item.fechaIngreso <= endDate;
 
             const query = normalizeText(searchQuery);
             const matchesSearch = !query ||
@@ -140,10 +317,25 @@ const ReportesPage = () => {
 
             return matchesTecnico && matchesStart && matchesEnd && matchesSearch;
         });
-    }, [selectedTechnician, startDate, endDate, searchQuery]);
+    }, [liquidaciones, selectedTechnician, startDate, endDate, searchQuery]);
+
+    const logModuleOptions = ['ALL', 'Órdenes', 'Taller / Diagnósticos', 'Clientes', 'Equipos', 'Liquidación', 'Seguridad / Sistema', 'Usuarios', 'Técnicos'];
+
+    const logsView = useMemo(() => {
+        return logs.map((log) => ({
+            id: `LOG-${log.id_log}`,
+            fecha: log.fecha_creacion
+                ? new Date(log.fecha_creacion).toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '-',
+            usuario: log.usuario_nombre || log.rol || 'Sistema',
+            modulo: log.modulo,
+            accion: log.accion,
+            detalles: log.detalles || '-',
+        }));
+    }, [logs]);
 
     const filteredLogs = useMemo(() => {
-        return mockAuditLogsData.filter((log) => {
+        return logsView.filter((log) => {
             const term = normalizeText(logSearch);
             const matchesSearch =
                 normalizeText(log.detalles).includes(term) ||
@@ -155,7 +347,7 @@ const ReportesPage = () => {
 
             return matchesSearch && matchesModule;
         });
-    }, [logSearch, logModuleFilter]);
+    }, [logsView, logSearch, logModuleFilter]);
 
     const totalFacturado = useMemo(() => {
         return filteredLiquidaciones.reduce((acc, curr) => acc + curr.montoTotal, 0);
@@ -243,130 +435,26 @@ const ReportesPage = () => {
         { key: 'detalles', label: 'Detalles / Descripción', className: 'text-slate-600 text-xs' },
     ];
 
-    const handleDownloadBackup = () => {
-        const backupData = {
-            fechaGeneracion: new Date().toISOString(),
-            sistema: 'Consumible Store - Control de Servicio Técnico',
-            version: '1.0.0',
-            liquidaciones: mockLiquidacionesData,
-            auditLogs: mockAuditLogsData,
-        };
-        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute('href', dataStr);
-        downloadAnchor.setAttribute('download', `consumible_store_backup_${new Date().toISOString().slice(0, 10)}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
+    const handleDownloadBackup = async () => {
+        setBackupLoading(true);
+        try {
+            const dump = await descargarBackup();
+            const blob = new Blob([dump], { type: 'application/sql' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `consumible_store_backup_${new Date().toISOString().slice(0, 10)}.sql`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Error generando backup:', err);
+            alert('Error generando el respaldo: ' + err.message);
+        } finally {
+            setBackupLoading(false);
+        }
     };
-
-    const ReportContent = ({ isModalView = false }) => (
-        <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-8'}`}>
-            <div className="border-b-2 border-slate-900 pb-4 mb-4">
-                <div className="flex flex-row justify-between items-start">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-[#97C719] rounded flex items-center justify-center text-white font-bold text-xs border border-black">CS</div>
-                            <h1 className="text-base font-black tracking-tight text-slate-900">CONSUMIBLE STORE, C.A.</h1>
-                        </div>
-                        <p className="text-[11px] text-slate-600 font-medium mt-0.5">RIF: J-40891234-5 | Soporte y Servicio Técnico Especializado</p>
-                        <p className="text-[10px] text-slate-500">C.C. Bolívar, Nivel PB, Local 12, Puerto Ordaz, Edo. Bolívar</p>
-                    </div>
-                    <div className="text-right text-[10px] text-slate-600 space-y-0.5 border-l border-slate-300 pl-3">
-                        <p><strong className="text-slate-800">Fecha Emisión:</strong> {new Date().toLocaleDateString('es-VE')} {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</p>
-                        <p><strong className="text-slate-800">Generado por:</strong> Administración / Recepción</p>
-                        <p><strong className="text-slate-800">Estatus:</strong> Servicios Finalizados / Cobrados</p>
-                    </div>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-200 text-center">
-                    <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">Reporte de Detalles de Servicios para Liquidación</h2>
-                </div>
-            </div>
-
-            <div className="mb-4 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2 border border-slate-300 bg-slate-50 p-2.5 rounded">
-                <div>
-                    <span className="text-slate-500 block text-[10px]">Técnico:</span>
-                    <strong className="text-slate-900">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
-                </div>
-                <div>
-                    <span className="text-slate-500 block text-[10px]">Rango de Fecha Ingreso:</span>
-                    <strong className="text-slate-900">{startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}</strong>
-                </div>
-                <div>
-                    <span className="text-slate-500 block text-[10px]">Total Servicios:</span>
-                    <strong className="text-slate-900">{filteredLiquidaciones.length} Registros</strong>
-                </div>
-                <div>
-                    <span className="text-slate-500 block text-[10px]">Monto Total Cobrado:</span>
-                    <strong className="text-emerald-700 text-xs">${totalFacturado.toFixed(2)}</strong>
-                </div>
-            </div>
-
-            <table className="w-full text-left text-[11px] border-collapse border border-slate-800 mb-4">
-                <thead>
-                    <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[10px]">
-                        <th className="p-1.5 border border-slate-800 text-center w-24">N° Orden</th>
-                        <th className="p-1.5 border border-slate-800">Técnico</th>
-                        <th className="p-1.5 border border-slate-800">Cliente</th>
-                        <th className="p-1.5 border border-slate-800">Equipo y Serial</th>
-                        <th className="p-1.5 border border-slate-800">Trabajo Realizado</th>
-                        <th className="p-1.5 border border-slate-800 text-center w-24">Fecha Ingreso</th>
-                        <th className="p-1.5 border border-slate-800 text-right w-24">Monto Cobrado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredLiquidaciones.length === 0 ? (
-                        <tr>
-                            <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
-                        </tr>
-                    ) : (
-                        filteredLiquidaciones.map((row, idx) => (
-                            <tr key={row.id} className={`border-b border-slate-400 ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
-                                <td className="p-1.5 border border-slate-800 font-mono font-bold text-center text-slate-900">{row.codigo}</td>
-                                <td className="p-1.5 border border-slate-800 font-medium text-slate-800">{row.tecnico}</td>
-                                <td className="p-1.5 border border-slate-800 text-slate-800">{row.cliente}</td>
-                                <td className="p-1.5 border border-slate-800 text-slate-800">
-                                    <div className="font-semibold">{row.equipo}</div>
-                                    <div className="text-[9px] text-slate-600 font-mono">S/N: {row.serial}</div>
-                                </td>
-                                <td className="p-1.5 border border-slate-800 text-slate-700 leading-tight">
-                                    <span>{row.trabajoRealizado}</span>
-                                    {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
-                                        <div className="text-[9px] text-amber-800 font-medium">Repuesto: {row.repuestosUsados}</div>
-                                    )}
-                                </td>
-                                <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
-                                <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
-                            </tr>
-                        ))
-                    )}
-                </tbody>
-                <tfoot>
-                    <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold">
-                        <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General Cobrado ({filteredLiquidaciones.length} Servicios):</td>
-                        <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">${totalFacturado.toFixed(2)}</td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            {resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
-                <div className="mb-6 pt-2">
-                    <h3 className="text-[10px] font-bold uppercase text-slate-700 mb-1">Consolidado por Técnico en el Período</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
-                        {resumenPorTecnico.map((t) => (
-                            <div key={t.nombre} className="border border-slate-300 p-1.5 rounded bg-slate-50">
-                                <span className="font-bold block text-slate-800 truncate">{t.nombre}</span>
-                                <div className="flex justify-between text-slate-600 mt-0.5">
-                                    <span>{t.servicios} serv.</span>
-                                    <strong className="text-slate-900">${t.totalCobrado.toFixed(2)}</strong>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
 
     return (
         <div className="space-y-6">
@@ -379,9 +467,17 @@ const ReportesPage = () => {
                     <p className="text-xs text-slate-500 mt-1">Reporte de servicios finalizados por fecha de ingreso para liquidación y respaldo operativo</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={reload}
+                        disabled={loading}
+                        className="inline-flex items-center justify-center p-2 rounded font-semibold transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-[#E2E8F0] text-[#1E293B] hover:bg-slate-100 bg-white"
+                    >
+                        <RefreshCw size={14} />
+                    </button>
                     <Button variant="secondary" icon={Eye} onClick={() => setIsPreviewOpen(true)}>Vista Previa</Button>
                     <Button variant="primary" icon={Printer} onClick={handlePrintReport}>Imprimir / Guardar PDF</Button>
-                    <Button variant="secondary" icon={HardDriveDownload} onClick={handleDownloadBackup}>Respaldo</Button>
+                    <Button variant="secondary" icon={HardDriveDownload} isLoading={backupLoading} onClick={handleDownloadBackup}>Respaldo</Button>
                 </div>
             </div>
 
@@ -402,12 +498,17 @@ const ReportesPage = () => {
 
             {activeTab === 'LIQUIDACION' && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <MetricCard title="Total Monto Cobrado" value={`$${totalFacturado.toFixed(2)}`} icon={DollarSign} color="emerald" />
-                        <MetricCard title="Servicios en el Reporte" value={filteredLiquidaciones.length.toString()} icon={CheckCircle2} color="blue" />
-                        <MetricCard title="Ticket Promedio" value={`$${ticketPromedio}`} icon={TrendingUp} color="amber" />
-                        <MetricCard title="Técnicos Involucrados" value={resumenPorTecnico.length.toString()} icon={Users} color="primary" />
-                    </div>
+                    {loading && <p className="text-sm text-slate-500">Cargando reporte...</p>}
+                    {error && <p className="text-sm text-red-500">Error al cargar: {error}</p>}
+
+                    {!loading && !error && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <MetricCard title="Total Monto Cobrado" value={`$${totalFacturado.toFixed(2)}`} icon={DollarSign} color="emerald" />
+                            <MetricCard title="Servicios en el Reporte" value={filteredLiquidaciones.length.toString()} icon={CheckCircle2} color="blue" />
+                            <MetricCard title="Ticket Promedio" value={`$${ticketPromedio}`} icon={TrendingUp} color="amber" />
+                            <MetricCard title="Técnicos Involucrados" value={resumenPorTecnico.length.toString()} icon={Users} color="primary" />
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
@@ -425,7 +526,7 @@ const ReportesPage = () => {
                         <FilterBar fields={filterFields} onReset={handleResetFilters} />
                     </div>
 
-                    {resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
+                    {!loading && !error && resumenPorTecnico.length > 0 && selectedTechnician === 'ALL' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                             {resumenPorTecnico.map((tec) => (
                                 <Card key={tec.nombre} className="p-3 border-l-4 border-l-[#97C719]">
@@ -444,28 +545,30 @@ const ReportesPage = () => {
                         </div>
                     )}
 
-                    <Card>
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                            <div>
-                                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                    <FileText size={16} className="text-[#97C719]" />
-                                    Detalle de Servicios para Liquidación
-                                </h3>
-                                <p className="text-[11px] text-slate-500">
-                                    {startDate || endDate ? (
-                                        <span>Filtrando por fecha de ingreso: <strong>{startDate ? formatDate(startDate) : 'Inicio'}</strong> hasta <strong>{endDate ? formatDate(endDate) : 'Fin'}</strong></span>
-                                    ) : (
-                                        'Mostrando todos los servicios finalizados registrados'
-                                    )}
-                                </p>
+                    {!loading && !error && (
+                        <Card>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                        <FileText size={16} className="text-[#97C719]" />
+                                        Detalle de Servicios para Liquidación
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500">
+                                        {startDate || endDate ? (
+                                            <span>Filtrando por fecha de ingreso: <strong>{startDate ? formatDate(startDate) : 'Inicio'}</strong> hasta <strong>{endDate ? formatDate(endDate) : 'Fin'}</strong></span>
+                                        ) : (
+                                            'Mostrando todos los servicios finalizados registrados'
+                                        )}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">{filteredLiquidaciones.length} Registros</span>
+                                    <Button variant="primary" size="sm" icon={Printer} onClick={handlePrintReport}>Imprimir Reporte</Button>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">{filteredLiquidaciones.length} Registros</span>
-                                <Button variant="primary" size="sm" icon={Printer} onClick={handlePrintReport}>Imprimir Reporte</Button>
-                            </div>
-                        </div>
-                        <Table columns={liquidacionColumns} data={filteredLiquidaciones} />
-                    </Card>
+                            <Table columns={liquidacionColumns} data={filteredLiquidaciones} />
+                        </Card>
+                    )}
                 </div>
             )}
 
@@ -481,11 +584,9 @@ const ReportesPage = () => {
                                 <label className="text-xs font-semibold text-slate-700 block mb-1">Módulo</label>
                                 <select value={logModuleFilter} onChange={(e) => setLogModuleFilter(e.target.value)} className="w-full bg-white border border-[#E2E8F0] text-xs text-slate-800 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all">
                                     <option value="ALL">Todos los Módulos</option>
-                                    <option value="Órdenes">Órdenes</option>
-                                    <option value="Taller">Taller / Diagnósticos</option>
-                                    <option value="Clientes">Clientes</option>
-                                    <option value="Liquidación">Liquidación</option>
-                                    <option value="Seguridad">Seguridad / Sistema</option>
+                                    {logModuleOptions.filter((m) => m !== 'ALL').map((m) => (
+                                        <option key={m} value={m}>{m}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -515,8 +616,8 @@ const ReportesPage = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-1">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Último Respaldo Local</span>
-                                        <p className="text-xs font-semibold text-slate-800">Hoy, {new Date().toLocaleDateString('es-VE')} (Automático)</p>
-                                        <p className="text-[11px] text-emerald-600 font-medium">Estado: Operativo e Íntegro</p>
+                                        <p className="text-xs font-semibold text-slate-800">Hoy, {new Date().toLocaleDateString('es-VE')} (Manual)</p>
+                                        <p className="text-[11px] text-emerald-600 font-medium">Estado: Generado desde el servidor</p>
                                     </div>
                                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-1">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Base de Datos</span>
@@ -525,7 +626,7 @@ const ReportesPage = () => {
                                     </div>
                                 </div>
                                 <div className="pt-4 flex items-center gap-3">
-                                    <Button variant="primary" icon={Download} onClick={handleDownloadBackup}>Descargar Copia de Seguridad (.JSON)</Button>
+                                    <Button variant="primary" icon={Download} isLoading={backupLoading} onClick={handleDownloadBackup}>Descargar Copia de Seguridad (.SQL)</Button>
                                 </div>
                             </div>
                         </div>
@@ -543,14 +644,30 @@ const ReportesPage = () => {
                         </div>
                     </div>
                     <div className="border border-slate-300 rounded-lg shadow-sm overflow-hidden bg-white">
-                        <ReportContent isModalView={true} />
+                        <ReportContent
+                            isModalView={true}
+                            selectedTechnician={selectedTechnicianNombre}
+                            startDate={startDate}
+                            endDate={endDate}
+                            rows={filteredLiquidaciones}
+                            total={totalFacturado}
+                            resumen={resumenPorTecnico}
+                        />
                     </div>
                 </div>
             </Modal>
 
             <div className="hidden">
                 <div ref={contentRef}>
-                    <ReportContent isModalView={false} />
+                    <ReportContent
+                        isModalView={false}
+                        selectedTechnician={selectedTechnicianNombre}
+                        startDate={startDate}
+                        endDate={endDate}
+                        rows={filteredLiquidaciones}
+                        total={totalFacturado}
+                        resumen={resumenPorTecnico}
+                    />
                 </div>
             </div>
         </div>

@@ -1,23 +1,40 @@
-import { useState, useMemo } from 'react';
-import { Wrench, Laptop, CheckCircle2, Clock } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Wrench, Laptop } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
-import { mockOrdenes, getOrdenesActivasByClienteId } from '../../data/ordenesData';
-import { getEquiposByClienteId } from '../../data/equiposData';
+import { getClienteOrdenes, getClienteEquipos } from '../../api/entidades';
 
 const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
     const [activeTab, setActiveTab] = useState('ordenes');
+    const [ordenes, setOrdenes] = useState([]);
+    const [equipos, setEquipos] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const ordenesActivas = useMemo(
-        () => (customer ? getOrdenesActivasByClienteId(customer.id) : []),
-        [customer]
+        () => ordenes.filter((o) => o.estado !== 'CANCELADO'),
+        [ordenes]
     );
 
-    const equiposRegistrados = useMemo(
-        () => (customer ? getEquiposByClienteId(customer.id) : []),
-        [customer]
-    );
+    const equiposRegistrados = useMemo(() => equipos, [equipos]);
+
+    useEffect(() => {
+        if (!customer?.id) return;
+        let cancel = false;
+        Promise.all([getClienteOrdenes(customer.id), getClienteEquipos(customer.id)])
+            .then(([ordenesData, equiposData]) => {
+                if (cancel) return;
+                setOrdenes(ordenesData);
+                setEquipos(equiposData);
+            })
+            .catch((err) => {
+                if (!cancel) console.error('Error cargando historial del cliente:', err);
+            })
+            .finally(() => {
+                if (!cancel) setLoading(false);
+            });
+        return () => { cancel = true; };
+    }, [customer?.id]);
 
     if (!customer) return null;
 
@@ -74,7 +91,15 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
 
                 {activeTab === 'ordenes' ? (
                     <div>
-                        {ordenesActivas.length > 0 ? (
+                        {loading && <p className="text-xs text-slate-500 p-3">Cargando historial...</p>}
+                        {!loading && ordenesActivas.length === 0 ? (
+                            <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-[#E2E8F0]">
+                                <Wrench className="mx-auto size-8 text-slate-400 mb-2" />
+                                <p className="text-xs text-slate-500 font-medium">
+                                    Este cliente no posee órdenes de servicio activas en este momento.
+                                </p>
+                            </div>
+                        ) : (
                             <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
                                 <table className="w-full text-left text-xs text-slate-700">
                                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-[#E2E8F0]">
@@ -99,18 +124,19 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                                     </tbody>
                                 </table>
                             </div>
-                        ) : (
-                            <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-[#E2E8F0]">
-                                <Wrench className="mx-auto size-8 text-slate-400 mb-2" />
-                                <p className="text-xs text-slate-500 font-medium">
-                                    Este cliente no posee órdenes de servicio activas en este momento.
-                                </p>
-                            </div>
                         )}
                     </div>
                 ) : (
                     <div>
-                        {equiposRegistrados.length > 0 ? (
+                        {loading && <p className="text-xs text-slate-500 p-3">Cargando equipos...</p>}
+                        {!loading && equiposRegistrados.length === 0 ? (
+                            <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-[#E2E8F0]">
+                                <Laptop className="mx-auto size-8 text-slate-400 mb-2" />
+                                <p className="text-xs text-slate-500 font-medium">
+                                    No hay equipos previamente registrados para este cliente.
+                                </p>
+                            </div>
+                        ) : (
                             <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
                                 <table className="w-full text-left text-xs text-slate-700">
                                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-[#E2E8F0]">
@@ -130,13 +156,6 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
-                        ) : (
-                            <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-[#E2E8F0]">
-                                <Laptop className="mx-auto size-8 text-slate-400 mb-2" />
-                                <p className="text-xs text-slate-500 font-medium">
-                                    No hay equipos previamente registrados para este cliente.
-                                </p>
                             </div>
                         )}
                     </div>

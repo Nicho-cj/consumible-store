@@ -1,8 +1,18 @@
 import { query } from "../config/db.js";
+import { SELECT_CAMPOS, FROM_BASE } from "./ordenQueryBase.js";
 
 export class TecnicoModel {
     static async getAll() {
         const result = await query('SELECT * FROM tecnico ORDER BY id_tecnico DESC');
+        return result.rows;
+    }
+
+    // @REVISAR: FASE 3 - lista publica (vista tecnica comunitaria, sin login).
+    // Solo expone id_tecnico y nombre de tecnicos ACTIVOS para el selector.
+    static async getPublicos() {
+        const result = await query(
+            'SELECT id_tecnico, nombre FROM tecnico WHERE activo = TRUE ORDER BY nombre'
+        );
         return result.rows;
     }
 
@@ -39,6 +49,8 @@ export class TecnicoModel {
 
         for (const [key, value] of Object.entries(data)) {
             if (!allowed.includes(key)) continue;
+            // @REVISAR: no aplicar valores undefined (Zod emite undefined en campos nullish no enviados)
+            if (value === undefined) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;
@@ -60,7 +72,7 @@ export class TecnicoModel {
     }
 
     static async getOrdenes(id_tecnico) {
-        const result = await query('SELECT * FROM orden_servicio WHERE id_tecnico = $1 ORDER BY id_orden DESC', [id_tecnico]);
+        const result = await query(`SELECT ${SELECT_CAMPOS} ${FROM_BASE} WHERE o.id_tecnico = $1 ORDER BY o.id_orden DESC`, [id_tecnico]);
         return result.rows;
     }
 }

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UsuarioModel } from '../models/usuario.js';
 import { JWT_SECRET } from '../middlewares/auth.js';
+import { registrarAuditoria } from '../utils/auditoria.js';
 
 export class AuthController {
   // @REVISAR: POST /auth/login - valida nombre + contrasena contra la BD, retorna JWT
@@ -37,11 +38,27 @@ export class AuthController {
       });
     }
 
+    // DECISION DEL NEGOCIO: los tecnicos NO inician sesion (solo vista comunitaria).
+    // Guard defensivo por si existiera una cuenta catalogada como TECNICO.
+    if (usuario.rol === 'TECNICO') {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Los técnicos usan la vista comunitaria (sin login)',
+      });
+    }
+
     const token = jwt.sign(
       { id: usuario.id_usuario, nombre: usuario.nombre, rol: usuario.rol },
       JWT_SECRET,
       { expiresIn: '12h' }
     );
+
+    await registrarAuditoria(req, {
+      modulo: 'Seguridad',
+      accion: 'Inicio de sesión',
+      detalles: `El usuario ${usuario.nombre} (${usuario.rol}) inició sesión`,
+      usuario,
+    });
 
     return res.status(200).json({
       status: 'success',

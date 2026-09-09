@@ -5,6 +5,7 @@ import {
     validarCierreCompleto,
     ESTADO_ORDEN,
 } from "../utils/stateMachine.js";
+import { registrarAuditoria } from "../utils/auditoria.js";
 
 export class OrdenController {
     static async getAll(req, res) {
@@ -59,6 +60,12 @@ export class OrdenController {
             await OrdenModel.crearNotaServicio(resultado.id_orden).catch(() => {});
         }
 
+        await registrarAuditoria(req, {
+            modulo: 'Órdenes',
+            accion: 'Creación de Orden',
+            detalles: `Se registró la orden ${resultado?.codigo_orden}`,
+        });
+
         res.status(201).json(resultado)
     }
 
@@ -106,9 +113,13 @@ export class OrdenController {
                 return res.status(400).json({ status: 'error', message: errorAprobacion });
             }
 
-            // RN-04: cierre con datos completos
+            // RN-04: cierre con datos completos (la entrega incluye contador_final y monto_cobro de la orden)
             const nota = await OrdenModel.getNotaServicio(id);
-            const errorCierre = validarCierreCompleto(data.estado, nota, ordenActual);
+            const errorCierre = validarCierreCompleto(
+                data.estado,
+                nota,
+                { ...ordenActual, ...data }
+            );
             if (errorCierre) {
                 return res.status(400).json({ status: 'error', message: errorCierre });
             }
@@ -136,6 +147,22 @@ export class OrdenController {
         }
 
         const orden = await OrdenModel.patch(id, data)
+
+        // Auditoria: cambio de estado y/o asignacion de tecnico
+        if (data.estado && data.estado !== ordenActual.estado) {
+            await registrarAuditoria(req, {
+                modulo: 'Órdenes',
+                accion: 'Cambio de Estatus',
+                detalles: `Orden ${ordenActual.codigo_orden} pasó de "${ordenActual.estado}" a "${data.estado}"`,
+            });
+        } else if (data.id_tecnico && String(data.id_tecnico) !== String(ordenActual.id_tecnico)) {
+            await registrarAuditoria(req, {
+                modulo: 'Órdenes',
+                accion: 'Asignación de Técnico',
+                detalles: `Se asignó técnico id=${data.id_tecnico} a la orden ${ordenActual.codigo_orden}`,
+            });
+        }
+
         res.status(200).json(orden)
     }
 
@@ -145,6 +172,11 @@ export class OrdenController {
         if (!resultado) {
             return res.status(404).json({ status: 'error', message: 'Orden no encontrada' })
         }
+        await registrarAuditoria(req, {
+            modulo: 'Órdenes',
+            accion: 'Eliminación de Orden',
+            detalles: `Se eliminó la orden ${resultado.codigo_orden}`,
+        });
         res.status(200).json(resultado)
     }
 
@@ -169,6 +201,11 @@ export class OrdenController {
                 cotizacion_aprobada: true,
                 estado: ESTADO_ORDEN.PROCESO_TECNICO,
             })
+            await registrarAuditoria(req, {
+                modulo: 'Órdenes',
+                accion: 'Cotización Aprobada',
+                detalles: `El cliente aprobó la cotización de la orden ${ordenActual.codigo_orden} (pasa a proceso técnico)`,
+            });
             return res.status(200).json(resultado)
         } else {
             // Cliente rechazo -> se cancela la orden
@@ -176,6 +213,11 @@ export class OrdenController {
                 cotizacion_aprobada: false,
                 estado: ESTADO_ORDEN.CANCELADO,
             })
+            await registrarAuditoria(req, {
+                modulo: 'Órdenes',
+                accion: 'Cotización Rechazada',
+                detalles: `El cliente rechazó la cotización de la orden ${ordenActual.codigo_orden} (se cancela)`,
+            });
             return res.status(200).json(resultado)
         }
     }
@@ -198,6 +240,11 @@ export class OrdenController {
             id_tecnico,
             motivo_cambio_tecnico: motivo,
         })
+        await registrarAuditoria(req, {
+            modulo: 'Órdenes',
+            accion: 'Cambio de Técnico',
+            detalles: `Orden ${ordenActual.codigo_orden}: técnico id=${id_tecnico} (motivo: ${motivo})`,
+        });
         res.status(200).json(resultado)
     }
 
@@ -220,6 +267,11 @@ export class OrdenController {
         }
 
         const resultado = await OrdenModel.patch(id, { numero_factura })
+        await registrarAuditoria(req, {
+            modulo: 'Liquidación',
+            accion: 'Registro de Factura',
+            detalles: `Factura ${numero_factura} registrada en la orden ${ordenActual.codigo_orden}`,
+        });
         res.status(200).json(resultado)
     }
 

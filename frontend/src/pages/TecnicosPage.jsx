@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { UserPlus, Users, Wrench, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { UserPlus, Users, Wrench, AlertTriangle, RefreshCw } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -8,11 +8,14 @@ import FilterBar from '../components/common/FilterBar';
 import TecnicoCard from '../components/common/TecnicoCard';
 import TecnicoHistorialModal from '../components/modals/TecnicoHistorialModal';
 import { normalizeText } from '../utils/text';
-import { mockTecnicos } from '../data/tecnicosData';
-import { mockOrdenes, ORDER_STATUS } from '../data/ordenesData';
+import { listTecnicos, createTecnico } from '../api/entidades';
+import { listOrdenes } from '../api/ordenes';
 
 const TecnicosPage = () => {
-    const [tecnicos, setTecnicos] = useState(mockTecnicos);
+    const [tecnicos, setTecnicos] = useState([]);
+    const [ordenes, setOrdenes] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
@@ -20,11 +23,46 @@ const TecnicosPage = () => {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [nuevoTecnico, setNuevoTecnico] = useState({
         nombre: '',
-        cargo: 'Técnico',
         estado: 'ACTIVE',
     });
+    const [submitError, setSubmitError] = useState('');
 
     const [selectedTecnicoHistory, setSelectedTecnicoHistory] = useState(null);
+
+    useEffect(() => {
+        let cancel = false;
+        Promise.all([listTecnicos(), listOrdenes()])
+            .then(([tecnicosData, ordenesData]) => {
+                if (cancel) return;
+                setTecnicos(tecnicosData);
+                setOrdenes(ordenesData);
+            })
+            .catch((err) => {
+                if (!cancel) {
+                    console.error('Error cargando técnicos:', err);
+                    setError(err.message);
+                }
+            })
+            .finally(() => {
+                if (!cancel) setLoading(false);
+            });
+        return () => { cancel = true; };
+    }, []);
+
+    const reload = () => {
+        setLoading(true);
+        Promise.all([listTecnicos(), listOrdenes()])
+            .then(([tecnicosData, ordenesData]) => {
+                setTecnicos(tecnicosData);
+                setOrdenes(ordenesData);
+                setError('');
+            })
+            .catch((err) => {
+                console.error('Error cargando técnicos:', err);
+                setError(err.message);
+            })
+            .finally(() => setLoading(false));
+    };
 
     const filterFields = [
         {
@@ -55,43 +93,64 @@ const TecnicosPage = () => {
         setStatusFilter('ALL');
     };
 
-    const handleSaveTecnico = (e) => {
+    const handleSaveTecnico = async (e) => {
         e.preventDefault();
-        const nuevo = {
-            id: Date.now(),
-            ...nuevoTecnico,
-            ordenesActuales: [],
-            historialOrdenes: [],
-        };
-        setTecnicos([nuevo, ...tecnicos]);
-        setIsCreateOpen(false);
-        setNuevoTecnico({ nombre: '', cargo: 'Técnico', estado: 'ACTIVE' });
+        setSubmitError('');
+        try {
+            const creado = await createTecnico({
+                nombre: nuevoTecnico.nombre.trim(),
+                estado: nuevoTecnico.estado,
+            });
+            setTecnicos((prev) => [creado, ...prev]);
+            setIsCreateOpen(false);
+            setNuevoTecnico({ nombre: '', estado: 'ACTIVE' });
+        } catch (err) {
+            console.error('Error creando técnico:', err);
+            setSubmitError(err.message);
+        }
     };
 
     const stats = useMemo(() => {
         const activos = tecnicos.filter((t) => t.estado === 'ACTIVE').length;
 
-        const ordenesAsignadas = mockOrdenes.filter(
-            (o) => o.estado !== ORDER_STATUS.ENTREGADO && o.estado !== ORDER_STATUS.CANCELADO
+        const ordenesAsignadas = ordenes.filter(
+            (o) => o.estado !== 'ENTREGADO' && o.estado !== 'CANCELADO'
         ).length;
 
-        const enEspera = mockOrdenes.filter(
-            (o) => o.estado === ORDER_STATUS.SOLUCION_COTIZACION
+        const enEspera = ordenes.filter(
+            (o) => o.estado === 'SOLUCION_COTIZACION'
         ).length;
 
         return { activos, ordenesAsignadas, enEspera };
-    }, [tecnicos]);
+    }, [tecnicos, ordenes]);
 
     const filteredTechnicians = useMemo(() => {
         return tecnicos.filter((tec) => {
             const term = normalizeText(searchQuery);
             const matchesName = normalizeText(tec.nombre).includes(term);
-            const matchesRole = normalizeText(tec.cargo).includes(term);
+            const matchesRole = normalizeText(tec.cargo || '').includes(term);
             const matchesSearch = matchesName || matchesRole;
             const matchesStatus = statusFilter === 'ALL' || tec.estado === statusFilter;
             return matchesSearch && matchesStatus;
         });
     }, [tecnicos, searchQuery, statusFilter]);
+
+    const ordenesPorTecnico = useMemo(() => {
+        const map = {};
+        ordenes.forEach((o) => {
+            if (!o.tecnicoId) return;
+            if (!map[o.tecnicoId]) map[o.tecnicoId] = [];
+            map[o.tecnicoId].push(o);
+        });
+        return map;
+    }, [ordenes]);
+
+    const apertura = (tecnico) => {
+        const tecOrdenes = (ordenesPorTecnico[tecnico.id] || [])
+            .filter((o) => o.estado !== 'ENTREGADO' && o.estado !== 'CANCELADO');
+        alert(`Mostrando órdenes activas de: ${tecnico.nombre}\n${tecOrdenes.length} órdenes en taller:\n- ` +
+            tecOrdenes.map((o) => `${o.codigo} (${o.estado})`).join('\n- ') || 'Sin órdenes activas.');
+    };
 
     return (
         <div className="space-y-6">
@@ -102,9 +161,20 @@ const TecnicosPage = () => {
                         Administración de personal técnico, asignación y carga de trabajo en taller
                     </p>
                 </div>
-                <Button variant="primary" icon={UserPlus} onClick={() => setIsCreateOpen(true)}>
-                    Agregar Técnico
-                </Button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        variant="secondary"
+                        onClick={reload}
+                        disabled={loading}
+                        className="inline-flex items-center justify-center p-2 rounded font-semibold transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-[#E2E8F0] text-[#1E293B] hover:bg-slate-100 bg-white"
+                    >
+                        <RefreshCw size={14} />
+                    </button>
+                    <Button variant="primary" icon={UserPlus} onClick={() => { setSubmitError(''); setIsCreateOpen(true); }}>
+                        Agregar Técnico
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -141,13 +211,21 @@ const TecnicosPage = () => {
 
             <FilterBar fields={filterFields} onReset={handleResetFilters} />
 
-            {filteredTechnicians.length > 0 ? (
+            {loading && <p className="text-sm text-slate-500">Cargando técnicos...</p>}
+            {error && <p className="text-sm text-red-500">Error al cargar: {error}</p>}
+
+            {!loading && !error && (filteredTechnicians.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
                     {filteredTechnicians.map((tec) => (
                         <TecnicoCard
                             key={tec.id}
-                            technician={tec}
-                            onViewOrders={() => alert(`Mostrando órdenes activas de: ${tec.nombre}`)}
+                            technician={{
+                                ...tec,
+                                ordenesActuales: (ordenesPorTecnico[tec.id] || [])
+                                    .filter((o) => o.estado !== 'ENTREGADO' && o.estado !== 'CANCELADO')
+                                    .map((o) => ({ codigo: o.codigo, estatus: o.estado })),
+                            }}
+                            onViewOrders={apertura}
                             onViewHistory={() => setSelectedTecnicoHistory(tec)}
                         />
                     ))}
@@ -156,7 +234,7 @@ const TecnicosPage = () => {
                 <Card className="p-8 text-center text-slate-500 text-xs">
                     No se encontraron técnicos que coincidan con los filtros aplicados.
                 </Card>
-            )}
+            ))}
 
             <Modal
                 isOpen={isCreateOpen}
@@ -171,12 +249,6 @@ const TecnicosPage = () => {
                         onChange={(e) => setNuevoTecnico({ ...nuevoTecnico, nombre: e.target.value })}
                         required
                     />
-                    <Input
-                        label="Cargo / Especialidad"
-                        placeholder="Ej. Técnico Senior / Especialista Kyocera"
-                        value={nuevoTecnico.cargo}
-                        onChange={(e) => setNuevoTecnico({ ...nuevoTecnico, cargo: e.target.value })}
-                    />
                     <div>
                         <label className="text-xs font-semibold text-slate-700 block mb-1">Estatus Inicial</label>
                         <select
@@ -189,6 +261,7 @@ const TecnicosPage = () => {
                             <option value="OFF_DUTY">Inactivo</option>
                         </select>
                     </div>
+                    {submitError && <p className="text-xs text-red-500">{submitError}</p>}
                     <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
                         <Button type="button" variant="secondary" onClick={() => setIsCreateOpen(false)}>
                             Cancelar

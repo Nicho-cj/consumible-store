@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, DollarSign, Hash } from 'lucide-react';
+import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, Hash } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
 import { ORDER_STATUS, STATUS_FLOW, STATUS_CONFIG } from '../../utils/status';
+import { responderCotizacion, patchOrden } from '../../api/ordenes';
 
 const FlowProgress = ({ currentStatus }) => {
     const currentIdx = STATUS_FLOW.indexOf(currentStatus);
@@ -64,20 +65,37 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
     const [contadorFinal, setContadorFinal] = useState('');
     const [montoCobro, setMontoCobro] = useState('');
     const [closeError, setCloseError] = useState('');
+    const [saving, setSaving] = useState(false);
 
     if (!order) return null;
 
     const currentStatus = order.estado || ORDER_STATUS.REGISTRADO;
-    const today = new Date().toISOString().slice(0, 10);
 
-    const handleApprove = () => {
-        if (!onUpdateOrder) return;
-        onUpdateOrder({ ...order, estado: ORDER_STATUS.PROCESO_TECNICO });
+    // FASE 5-1: respuestas de cotizacion reales via PATCH /ordenes/:id/cotizacion (RF-07)
+    const handleApprove = async () => {
+        if (!order.id || saving) return;
+        setSaving(true);
+        try {
+            const updated = await responderCotizacion(order.id, true);
+            onUpdateOrder?.(updated);
+        } catch (err) {
+            alert(`Error al aprobar la cotización: ${err.message}`);
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleReject = () => {
-        if (!onUpdateOrder) return;
-        onUpdateOrder({ ...order, estado: ORDER_STATUS.CANCELADO });
+    const handleReject = async () => {
+        if (!order.id || saving) return;
+        setSaving(true);
+        try {
+            const updated = await responderCotizacion(order.id, false);
+            onUpdateOrder?.(updated);
+        } catch (err) {
+            alert(`Error al rechazar la cotización: ${err.message}`);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleOpenCloseForm = () => {
@@ -87,7 +105,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
         setCloseError('');
     };
 
-    const handleDeliver = () => {
+    const handleDeliver = async () => {
         const cnt = parseInt(contadorFinal, 10);
         const monto = parseFloat(montoCobro);
 
@@ -103,17 +121,23 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
             setCloseError('El monto de cobro debe ser un número válido.');
             return;
         }
+        if (!order.id || saving) return;
 
-        if (onUpdateOrder) {
-            onUpdateOrder({
-                ...order,
-                estado: ORDER_STATUS.ENTREGADO,
-                contadorFinal: cnt,
-                montoCobro: monto,
-                fechaEntregado: today,
+        setSaving(true);
+        try {
+            // PATCH /ordenes/:id -> estado ENTREGADO + contador_final + monto_cobro (RF-08/RF-09)
+            const updated = await patchOrden(order.id, {
+                estado: 'ENTREGADO',
+                contador_final: cnt,
+                monto_cobro: monto,
             });
+            onUpdateOrder?.(updated);
+            setShowCloseForm(false);
+        } catch (err) {
+            setCloseError(err.message);
+        } finally {
+            setSaving(false);
         }
-        setShowCloseForm(false);
     };
 
     return (
@@ -252,10 +276,10 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
                             El técnico ha enviado esta orden con diagnóstico. Contacte al cliente para confirmar si aprueba el trabajo.
                         </p>
                         <div className="flex gap-3">
-                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleApprove} className="bg-emerald-600 hover:bg-emerald-700">
-                                Cliente Aprobó
+                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleApprove} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+                                {saving ? 'Procesando...' : 'Cliente Aprobó'}
                             </Button>
-                            <Button variant="danger" size="sm" icon={XCircle} onClick={handleReject}>
+                            <Button variant="danger" size="sm" icon={XCircle} onClick={handleReject} disabled={saving}>
                                 Cliente Rechazó
                             </Button>
                         </div>
@@ -310,8 +334,8 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
                         )}
                         <div className="flex gap-2 justify-end">
                             <Button variant="secondary" size="sm" onClick={() => setShowCloseForm(false)}>Cancelar</Button>
-                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleDeliver}>
-                                Confirmar Entrega
+                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleDeliver} disabled={saving}>
+                                {saving ? 'Entregando...' : 'Confirmar Entrega'}
                             </Button>
                         </div>
                     </div>

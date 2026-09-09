@@ -1,4 +1,5 @@
 import { DetalleRepuestoModel } from "../models/repuesto.js";
+import { registrarAuditoria } from "../utils/auditoria.js";
 
 // @REVISAR: controller nuevo - antes no existia controllers/repuesto.js
 export class DetalleRepuestoController {
@@ -19,6 +20,11 @@ export class DetalleRepuestoController {
      static async create(req, res) {
           const data = req.body
           const resultado = await DetalleRepuestoModel.create(data)
+          await registrarAuditoria(req, {
+               modulo: 'Taller',
+               accion: 'Registro de Repuesto',
+               detalles: `Repuesto "${data.nombre}" (${data.cantidad}) en la orden id=${data.id_orden}`,
+          });
           res.status(201).json(resultado)
      }
 
@@ -39,6 +45,11 @@ export class DetalleRepuestoController {
      static async delete(req, res) {
           const id = req.params.id
           const resultado = await DetalleRepuestoModel.delete(id)
+          await registrarAuditoria(req, {
+               modulo: 'Taller',
+               accion: 'Eliminación de Repuesto',
+               detalles: `Se eliminó el detalle de repuesto id=${id}`,
+          });
           res.status(200).json(resultado)
      }
 

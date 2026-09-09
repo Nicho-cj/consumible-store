@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Eye, Plus, Wrench, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Eye, Plus, Wrench, CheckCircle2, XCircle, Clock, RefreshCw } from 'lucide-react';
 import Card from '../components/common/Card';
 import Table from '../components/common/Table';
 import Button from '../components/common/Button';
@@ -7,7 +7,8 @@ import StatusBadge from '../components/common/StatusBadge';
 import FilterBar from '../components/common/FilterBar';
 import OrdenDetalleModal from '../components/modals/OrdenDetalleModal';
 import { normalizeText } from '../utils/text';
-import { mockOrdenes, ORDER_STATUS } from '../data/ordenesData';
+import { ORDER_STATUS } from '../utils/status';
+import { listOrdenes } from '../api/ordenes';
 
 const TAB_STATUS_MAP = {
     EN_PROCESO: [
@@ -22,9 +23,58 @@ const TAB_STATUS_MAP = {
 };
 
 const OrdenesPage = ({ onOpenNewOrderModal }) => {
-    const [ordenes, setOrdenes] = useState(mockOrdenes);
+    const [ordenes, setOrdenes] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [selectedOrden, setSelectedOrden] = useState(null);
     const [activeTab, setActiveTab] = useState('EN_PROCESO');
+
+    useEffect(() => {
+        let cancel = false;
+        listOrdenes()
+            .then((data) => {
+                if (!cancel) {
+                    setOrdenes(data);
+                    setError('');
+                }
+            })
+            .catch((err) => {
+                if (!cancel) {
+                    console.error('Error cargando órdenes:', err);
+                    setError(err.message);
+                }
+            })
+            .finally(() => {
+                if (!cancel) setLoading(false);
+            });
+        return () => { cancel = true; };
+    }, []);
+
+    // recarga explicita (usuario): muestra el indicador de carga
+    const reloadOrdenes = () => {
+        setLoading(true);
+        listOrdenes()
+            .then((data) => {
+                setOrdenes(data);
+                setError('');
+            })
+            .catch((err) => {
+                console.error('Error cargando órdenes:', err);
+                setError(err.message);
+            })
+            .finally(() => setLoading(false));
+    };
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        // @REVISAR FASE 6: refrescar las ordenes al cambiar de solapa mantiene la lista al dia
+        reloadOrdenes();
+    };
+
+    const handleUpdateOrder = () => {
+        setSelectedOrden(null);
+        reloadOrdenes();
+    };
 
     const [searchSerial, setSearchSerial] = useState('');
     const [searchClient, setSearchClient] = useState('');
@@ -43,11 +93,6 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
         setSearchClient('');
         setStartDate('');
         setEndDate('');
-    };
-
-    const handleUpdateOrder = (updatedOrder) => {
-        setOrdenes((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
-        setSelectedOrden(null);
     };
 
     const filteredOrders = useMemo(() => {
@@ -101,9 +146,14 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                     <h2 className="text-xl font-bold text-slate-800">Control de Órdenes de Servicio</h2>
                     <p className="text-xs text-slate-500 mt-1">Gestión administrativa, aprobación de presupuestos y entregas</p>
                 </div>
-                <Button variant="primary" icon={Plus} onClick={onOpenNewOrderModal}>
-                    Nueva Orden
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button variant="secondary" icon={RefreshCw} onClick={reloadOrdenes} disabled={loading}>
+                        Actualizar
+                    </Button>
+                    <Button variant="primary" icon={Plus} onClick={onOpenNewOrderModal}>
+                        Nueva Orden
+                    </Button>
+                </div>
             </div>
 
             <div className="flex border-b border-slate-200 gap-2 overflow-x-auto">
@@ -113,7 +163,7 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                     return (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => handleTabChange(tab.id)}
                             className={`flex items-center gap-2 px-4 py-2.5 font-medium text-xs border-b-2 transition-colors whitespace-nowrap ${isActive
                                     ? 'border-[#55720C] text-[#55720C] bg-slate-50/50'
                                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -129,7 +179,11 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
             <FilterBar fields={filterFields} onReset={handleResetFilters} />
 
             <Card>
-                <Table columns={columns} data={filteredOrders} emptyMessage="No hay órdenes en esta categoría." />
+                {loading && !error && <p className="p-4 text-sm text-slate-500">Cargando órdenes...</p>}
+                {error && <p className="p-4 text-sm text-red-500">Error al cargar: {error}</p>}
+                {!loading && !error && (
+                    <Table columns={columns} data={filteredOrders} emptyMessage="No hay órdenes en esta categoría." />
+                )}
             </Card>
 
             <OrdenDetalleModal

@@ -1,4 +1,5 @@
 import { ClienteModel } from "../models/cliente.js";
+import { registrarAuditoria } from "../utils/auditoria.js";
 
 export class ClienteController {
      static async getAll(req, res) {
@@ -10,6 +11,12 @@ export class ClienteController {
 
           const data = req.body
           const resultado = await ClienteModel.create(data)
+
+          await registrarAuditoria(req, {
+               modulo: 'Clientes',
+               accion: 'Registro de Cliente',
+               detalles: `Se dio de alta el cliente "${resultado?.nombre_completo}" (${resultado?.ci_rif})`,
+          });
 
           res.status(200).json(resultado)
      }
@@ -34,12 +41,24 @@ export class ClienteController {
           const data = req.body
           const cliente = await ClienteModel.patch(id, data)
 
+          await registrarAuditoria(req, {
+               modulo: 'Clientes',
+               accion: 'Actualización de Cliente',
+               detalles: `Se actualizó el cliente id=${id}`,
+          });
+
           res.status(200).json(cliente)
      }
 
      static async delete (req, res) {
           const id = req.params.id
           const resultado = await ClienteModel.delete(id)
+
+          await registrarAuditoria(req, {
+               modulo: 'Clientes',
+               accion: 'Eliminación de Cliente',
+               detalles: `Se eliminó el cliente id=${id}`,
+          });
 
           res.status(200).json(resultado)
      }

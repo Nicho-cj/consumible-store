@@ -1,4 +1,5 @@
 import { EquipoModel } from "../models/equipo.js";
+import { registrarAuditoria } from "../utils/auditoria.js";
 
 export class EquipoController {
      // @REVISAR: Todos los params cambiaron de req.params.serial a req.params.id (entero id_equipo)
@@ -10,6 +11,11 @@ export class EquipoController {
      static async create(req, res) {
           const data = req.body
           const resultado = await EquipoModel.create(data)
+          await registrarAuditoria(req, {
+               modulo: 'Equipos',
+               accion: 'Registro de Equipo',
+               detalles: `Se registró el equipo ${resultado?.marca} ${resultado?.modelo} (Serial: ${resultado?.nro_serial})`,
+          });
           res.status(201).json(resultado)
      }
 
@@ -43,6 +49,11 @@ export class EquipoController {
           const id = req.params.id
           const data = req.body
           const equipo = await EquipoModel.patch(id, data)
+          await registrarAuditoria(req, {
+               modulo: 'Equipos',
+               accion: 'Actualización de Equipo',
+               detalles: `Se actualizó el equipo id=${id}`,
+          });
           res.status(200).json(equipo)
      }
 
@@ -52,6 +63,11 @@ export class EquipoController {
           if (!resultado) {
                return res.status(404).json({ status: 'error', message: 'Equipo no encontrado' })
           }
+          await registrarAuditoria(req, {
+               modulo: 'Equipos',
+               accion: 'Eliminación de Equipo',
+               detalles: `Se eliminó el equipo "${resultado.marca} ${resultado.modelo}" (Serial: ${resultado.nro_serial})`,
+          });
           res.status(200).json(resultado)
      }
 

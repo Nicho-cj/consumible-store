@@ -42,6 +42,8 @@ export class NotaServicioModel {
 
         for (const [key, value] of Object.entries(data)) {
             if (!allowed.includes(key)) continue;
+            // @REVISAR: no aplicar valores undefined (Zod emite undefined en campos nullish no enviados)
+            if (value === undefined) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;

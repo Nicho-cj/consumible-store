@@ -3,21 +3,33 @@ import { Wrench, CheckCircle, Plus, Trash2, X, Lock, PackageCheck, PlayCircle } 
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
 import { ORDER_STATUS, STATUS_CONFIG } from '../../utils/status';
+import { listRepuestos, patchOrden, saveNota, syncRepuestos } from '../../api/ordenes';
 
 const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
-    const [diagnostico, setDiagnostico] = useState('');
-    const [repuestosUtilizados, setRepuestosUtilizados] = useState([]);
+    // La pagina monta este modal con key={order.id}: al cambiar de orden se remonta
+    // y estos estados se inicializan (sin setState en effects)
+    const [diagnostico, setDiagnostico] = useState(() => order?.diagnostico || '');
+    const [repuestosUtilizados, setRepuestosUtilizados] = useState(() => order?.repuestosUsados || []);
+    const [repuestosPrevios, setRepuestosPrevios] = useState(() => order?.repuestosUsados || []);
     const [nuevoRepuestoNombre, setNuevoRepuestoNombre] = useState('');
     const [nuevoRepuestoCantidad, setNuevoRepuestoCantidad] = useState(1);
     const [error, setError] = useState('');
+    const [saving, setSaving] = useState(false);
 
+    // FASE 5-1: cargar los repuestos REALES persistidos de esta orden (setState solo en callback)
     useEffect(() => {
-        if (order) {
-            setDiagnostico(order.diagnostico || '');
-            setRepuestosUtilizados(order.repuestosUsados || []);
-            setError('');
-        }
-    }, [order]);
+        if (!order?.id) return;
+        let cancel = false;
+        listRepuestos(order.id)
+            .then((repuestos) => {
+                if (cancel) return;
+                const mapeados = repuestos.map((r) => ({ id: r.id, nombre: r.nombre, cantidad: r.cantidad }));
+                setRepuestosPrevios(mapeados);
+                setRepuestosUtilizados(mapeados);
+            })
+            .catch((err) => console.error('Error cargando repuestos:', err));
+        return () => { cancel = true; };
+    }, [order?.id]);
 
     if (!isOpen || !order) return null;
 
@@ -41,7 +53,8 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
         const cantNum = parseInt(nuevoRepuestoCantidad, 10) || 1;
         setRepuestosUtilizados([
             ...repuestosUtilizados,
-            { id: Date.now(), nombre: nuevoRepuestoNombre.trim(), cantidad: cantNum },
+            // id temporal string -> se crea en BD al guardar (los id numericos ya estan persistidos)
+            { id: `temp-${Date.now()}`, nombre: nuevoRepuestoNombre.trim(), cantidad: cantNum },
         ]);
         setNuevoRepuestoNombre('');
         setNuevoRepuestoCantidad(1);
@@ -52,52 +65,76 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
         setRepuestosUtilizados(repuestosUtilizados.filter((item) => item.id !== id));
     };
 
-    const handleAceptarOrden = () => {
-        const ordenActualizada = { ...order, estado: ORDER_STATUS.EN_DIAGNOSTICO };
-        if (onSaveStatus) onSaveStatus(ordenActualizada);
-        onClose();
+    // FASE 5-1: persistir nota (si no existe la crea) + sincronizar repuestos en BD
+    const guardarAvanceEnBackend = async () => {
+        await saveNota(order.id, { diagnostico: diagnostico.trim() });
+        await syncRepuestos(order.id, repuestosPrevios, repuestosUtilizados);
     };
 
-    const handleEnviarACotizacion = () => {
+    const handleAceptarOrden = async () => {
+        if (saving) return;
+        setSaving(true);
+        try {
+            const updated = await patchOrden(order.id, { estado: 'EN_DIAGNOSTICO' });
+            onSaveStatus?.(updated);
+        } catch (err) {
+            alert(`Error al aceptar la orden: ${err.message}`);
+        } finally {
+            setSaving(false);
+            // onSaveStatus cierra el modal en la pagina
+        }
+    };
+
+    const handleEnviarACotizacion = async () => {
         if (!diagnostico.trim()) {
             setError('Debes ingresar el diagnóstico antes de enviar a cotización.');
             return;
         }
+        if (saving) return;
         setError('');
-        const ordenActualizada = {
-            ...order,
-            diagnostico: diagnostico.trim(),
-            estado: ORDER_STATUS.SOLUCION_COTIZACION,
-            repuestosUsados: repuestosUtilizados,
-        };
-        if (onSaveStatus) onSaveStatus(ordenActualizada);
-        onClose();
+        setSaving(true);
+        try {
+            await guardarAvanceEnBackend();
+            const updated = await patchOrden(order.id, { estado: 'SOLUCION_COTIZACION' });
+            onSaveStatus?.(updated);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleGuardarAvance = () => {
-        const ordenActualizada = {
-            ...order,
-            diagnostico: diagnostico.trim(),
-            repuestosUsados: repuestosUtilizados,
-        };
-        if (onSaveStatus) onSaveStatus(ordenActualizada);
-        onClose();
+    const handleGuardarAvance = async () => {
+        if (saving) return;
+        setSaving(true);
+        try {
+            // solo persiste la nota + repuestos; el estado no cambia
+            await guardarAvanceEnBackend();
+            onSaveStatus?.();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleFinalizarTrabajo = () => {
+    const handleFinalizarTrabajo = async () => {
         if (!diagnostico.trim()) {
             setError('Debes ingresar el informe técnico antes de finalizar.');
             return;
         }
+        if (saving) return;
         setError('');
-        const ordenActualizada = {
-            ...order,
-            diagnostico: diagnostico.trim(),
-            estado: ORDER_STATUS.LISTO_ENTREGA,
-            repuestosUsados: repuestosUtilizados,
-        };
-        if (onSaveStatus) onSaveStatus(ordenActualizada);
-        onClose();
+        setSaving(true);
+        try {
+            await guardarAvanceEnBackend();
+            const updated = await patchOrden(order.id, { estado: 'LISTO_ENTREGA' });
+            onSaveStatus?.(updated);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -165,8 +202,8 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
                                 <p className="font-bold">Orden Pendiente por Iniciar</p>
                                 <p className="text-[11px] text-blue-600">Haz clic en aceptar para tomar esta orden y comenzar el diagnóstico.</p>
                             </div>
-                            <Button size="sm" variant="primary" icon={PlayCircle} onClick={handleAceptarOrden}>
-                                Aceptar Orden
+                            <Button size="sm" variant="primary" icon={PlayCircle} onClick={handleAceptarOrden} disabled={saving}>
+                                {saving ? 'Aceptando...' : 'Aceptar Orden'}
                             </Button>
                         </div>
                     )}
@@ -289,22 +326,22 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
 
                     {esEnDiagnostico && (
                         <div className="flex gap-2">
-                            <Button variant="secondary" size="sm" icon={Wrench} onClick={handleGuardarAvance}>
-                                Guardar Avance
+                            <Button variant="secondary" size="sm" icon={Wrench} onClick={handleGuardarAvance} disabled={saving}>
+                                {saving ? 'Guardando...' : 'Guardar Avance'}
                             </Button>
-                            <Button variant="primary" size="sm" icon={CheckCircle} onClick={handleEnviarACotizacion}>
-                                Enviar a Cotización
+                            <Button variant="primary" size="sm" icon={CheckCircle} onClick={handleEnviarACotizacion} disabled={saving}>
+                                {saving ? 'Enviando...' : 'Enviar a Cotización'}
                             </Button>
                         </div>
                     )}
 
                     {esEnReparacion && (
                         <div className="flex gap-2">
-                            <Button variant="secondary" size="sm" icon={Wrench} onClick={handleGuardarAvance}>
-                                Guardar Avance
+                            <Button variant="secondary" size="sm" icon={Wrench} onClick={handleGuardarAvance} disabled={saving}>
+                                {saving ? 'Guardando...' : 'Guardar Avance'}
                             </Button>
-                            <Button variant="primary" size="sm" icon={CheckCircle} onClick={handleFinalizarTrabajo}>
-                                Finalizar y Listo para Entregar
+                            <Button variant="primary" size="sm" icon={CheckCircle} onClick={handleFinalizarTrabajo} disabled={saving}>
+                                {saving ? 'Finalizando...' : 'Finalizar y Listo para Entregar'}
                             </Button>
                         </div>
                     )}

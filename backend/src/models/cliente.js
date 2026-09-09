@@ -1,4 +1,5 @@
 import { query } from "../config/db.js";
+import { SELECT_CAMPOS, FROM_BASE } from "./ordenQueryBase.js";
 
 export class ClienteModel {
     // @REVISAR: whitelist de columnas permitidas para filtros (evita inyeccion SQL por nombre de columna)
@@ -61,6 +62,8 @@ export class ClienteModel {
 
         for (const [key, value] of Object.entries(data)) {
             if (!allowed.includes(key)) continue;
+            // @REVISAR: no aplicar valores undefined (Zod emite undefined en campos nullish no enviados)
+            if (value === undefined) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;
@@ -82,7 +85,7 @@ export class ClienteModel {
     }
 
     static async getOrdenes(id_cliente) {
-        const result = await query('SELECT * FROM orden_servicio WHERE id_cliente = $1 ORDER BY id_orden DESC', [id_cliente]);
+        const result = await query(`SELECT ${SELECT_CAMPOS} ${FROM_BASE} WHERE o.id_cliente = $1 ORDER BY o.id_orden DESC`, [id_cliente]);
         return result.rows;
     }
 

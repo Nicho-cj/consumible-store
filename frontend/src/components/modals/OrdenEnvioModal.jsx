@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import JsBarcode from 'jsbarcode';
 import {
     Printer,
@@ -18,9 +18,9 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
     const orderData = {
         id: order?.codigo || order?.id || '0001960',
         fecha: order?.fecha || new Date().toLocaleDateString('es-VE'),
-        clientName: order?.cliente?.nombre || order?.cliente || 'Cliente General',
+        clientName: order?.cliente?.nombre || order?.clienteNombre || 'Cliente General',
         telefono: order?.cliente?.telefono || '',
-        equipment: `${order?.equipo?.marca || ''} ${order?.equipo?.modelo || ''}`.trim() || order?.equipo || 'Equipo Técnico',
+        equipment: `${order?.equipo?.marca || ''} ${order?.equipo?.modelo || ''}`.trim() || order?.tipoEquipo || 'Equipo Técnico',
         serial: order?.equipo?.serial || order?.serial || 'S/N-000000',
         serviceType: order?.tipoServicio || 'Revisión y Diagnóstico',
         initialCounter: order?.contadorInicial || order?.contadorBN || 0,

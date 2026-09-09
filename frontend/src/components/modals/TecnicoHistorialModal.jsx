@@ -1,20 +1,38 @@
-import { useMemo } from 'react';
-import { History, CheckCircle2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { History } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
-import { mockOrdenes, ORDER_STATUS } from '../../data/ordenesData';
+import { listOrdenes } from '../../api/ordenes';
 
 const TecnicoHistorialModal = ({ isOpen, onClose, technician }) => {
-    if (!technician) return null;
+    const [ordenes, setOrdenes] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const historial = useMemo(() => {
-        return mockOrdenes.filter(
-            (o) =>
-                o.tecnicoId === technician.id &&
-                (o.estado === ORDER_STATUS.ENTREGADO || o.estado === ORDER_STATUS.LISTO_ENTREGA)
-        );
-    }, [technician]);
+    useEffect(() => {
+        if (!technician?.id) return;
+        let cancel = false;
+        listOrdenes({ tecnicoId: technician.id })
+            .then((data) => {
+                if (!cancel) setOrdenes(data);
+            })
+            .catch((err) => {
+                if (!cancel) console.error('Error cargando historial del técnico:', err);
+            })
+            .finally(() => {
+                if (!cancel) setLoading(false);
+            });
+        return () => { cancel = true; };
+    }, [technician?.id]);
+
+    const historial = useMemo(
+        () => ordenes.filter(
+            (o) => o.estado === 'ENTREGADO' || o.estado === 'LISTO_ENTREGA'
+        ),
+        [ordenes]
+    );
+
+    if (!technician) return null;
 
     return (
         <Modal
@@ -27,7 +45,9 @@ const TecnicoHistorialModal = ({ isOpen, onClose, technician }) => {
                     Historial de equipos diagnosticados, reparados y entregados por este técnico.
                 </p>
 
-                {historial.length > 0 ? (
+                {loading ? (
+                    <p className="text-xs text-slate-500 p-3">Cargando historial...</p>
+                ) : historial.length > 0 ? (
                     <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
                         <table className="w-full text-left text-xs text-slate-700">
                             <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-[#E2E8F0]">

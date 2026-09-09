@@ -42,10 +42,11 @@ export function validarAprobacionCotizacion(estadoActual, nuevoEstado, cotizacio
 }
 
 // RN-04: no puede pasar a ENTREGADO sin datos operativos completos (diagnóstico, contador final, monto)
+// El contador final y el monto de cobro se registran en la orden al momento de la entrega (decision de negocio)
 export function validarCierreCompleto(nuevoEstado, nota, orden) {
   if (nuevoEstado === ESTADO_ORDEN.ENTREGADO) {
     const sinDiagnostico = !nota || !nota.diagnostico_falla || !nota.trabajo_realizado;
-    const sinContador = !nota || nota.contador_final === null || nota.contador_final === undefined;
+    const sinContador = orden.contador_final === null || orden.contador_final === undefined;
     const sinMonto = orden.monto_cobro === null || orden.monto_cobro === undefined;
 
     const faltan = [];

@@ -1,4 +1,5 @@
 import { query } from "../config/db.js";
+import { SELECT_CAMPOS, FROM_BASE } from "./ordenQueryBase.js";
 
 export class UsuarioModel {
     static async getAll() {
@@ -45,6 +46,8 @@ export class UsuarioModel {
 
         for (const [key, value] of Object.entries(data)) {
             if (!allowed.includes(key)) continue;
+            // @REVISAR: no aplicar valores undefined (Zod emite undefined en campos nullish no enviados)
+            if (value === undefined) continue;
             fields.push(`${key} = $${index}`);
             values.push(value);
             index++;
@@ -66,7 +69,7 @@ export class UsuarioModel {
     }
 
     static async getOrdenes(id_usuario) {
-        const result = await query('SELECT * FROM orden_servicio WHERE id_usuario_recep = $1 ORDER BY id_orden DESC', [id_usuario]);
+        const result = await query(`SELECT ${SELECT_CAMPOS} ${FROM_BASE} WHERE o.id_usuario_recep = $1 ORDER BY o.id_orden DESC`, [id_usuario]);
         return result.rows;
     }
 }

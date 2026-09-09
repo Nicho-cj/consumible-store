@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { User, Lock, Wrench, ArrowRight, Printer, AlertCircle } from 'lucide-react';
 import Button from '../components/common/Button';
 
-// @REVISAR: Login actualizado - el admin ingresa NOMBRE DE USUARIO + contrasena (sin email).
-// El tecnico accede por el boton comunitario sin credenciales.
+// @REVISAR: El login es SOLO para ADMINISTRADOR / RECEPCION (RNF-05).
+// Los tecnicos NO tienen usuario: entran por la vista comunitaria (boton de abajo, sin credenciales).
 const LoginPage = ({ onLoginAdmin, onAccessTechnician }) => {
     const [usuario, setUsuario] = useState('');
     const [password, setPassword] = useState('');

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { Search, CheckCircle2 } from 'lucide-react';
-import { CLIENTES_MOCK, EQUIPOS_MOCK } from '../../data/modalData';
+import { Search, CheckCircle2, AlertCircle } from 'lucide-react';
 import { sanitizeDocumentNumber } from '../../utils/text';
+import { listClientes, listEquipos, listTecnicos, createCliente, createEquipo } from '../../api/entidades';
 
 const COUNTRY_CODES = [
     { code: '+58', country: 'VE', name: 'Venezuela (+58)' },
@@ -31,6 +31,8 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     const [telefono, setTelefono] = useState('');
     const [direccion, setDireccion] = useState('');
     const [clienteEncontrado, setClienteEncontrado] = useState(false);
+    const [clienteNoEncontrado, setClienteNoEncontrado] = useState(false);
+    const [clienteId, setClienteId] = useState(null);
 
     // Estado Datos del Equipo
     const [serial, setSerial] = useState('');
@@ -39,23 +41,51 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
     const [falla, setFalla] = useState('');
     const [observaciones, setObservaciones] = useState('');
     const [equipoEncontrado, setEquipoEncontrado] = useState(false);
+    const [equipoNoEncontrado, setEquipoNoEncontrado] = useState(false);
+    const [equipoId, setEquipoId] = useState(null);
 
     // Estado Asignación
     const [tecnicoId, setTecnicoId] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    // Catalogos cargados desde el backend cuando se abre el modal (FASE 5-1)
+    const [catalogoClientes, setCatalogoClientes] = useState(null);
+    const [catalogoEquipos, setCatalogoEquipos] = useState(null);
+    const [tecnicos, setTecnicos] = useState(null);
+
+    const loadingRegistros = isOpen && catalogoClientes === null;
+
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancel = false;
+        Promise.all([listClientes(), listEquipos(), listTecnicos()])
+            .then(([clientes, equipos, tecnicos]) => {
+                if (cancel) return;
+                setCatalogoClientes(clientes);
+                setCatalogoEquipos(equipos);
+                setTecnicos(tecnicos);
+            })
+            .catch((err) => {
+                if (!cancel) console.error('Error cargando catálogos:', err);
+            });
+        return () => { cancel = true; };
+    }, [isOpen]);
 
     // Sanitización en tiempo real al tipear el documento
     const handleNumeroDocChange = (e) => {
         setNumeroDoc(sanitizeDocumentNumber(e.target.value));
     };
 
-    // Buscar Cliente por Cédula/RIF
+    // Buscar Cliente por Cédula/RIF contra el backend
     const handleSearchCliente = () => {
-        const fullCedula = `${tipoDoc}-${numeroDoc}`.trim();
-        const cliente = CLIENTES_MOCK[fullCedula];
+        if (!catalogoClientes) return;
+        const fullCedula = `${tipoDoc}-${numeroDoc}`.toUpperCase().trim();
+        const cliente = catalogoClientes.find((c) => c.cedulaRif.toUpperCase() === fullCedula);
 
         if (cliente) {
             setNombre(cliente.nombre);
             setDireccion(cliente.direccion);
+            setClienteId(cliente.id);
 
             if (cliente.telefono) {
                 let tel = cliente.telefono.trim();
@@ -65,6 +95,7 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                     tel = tel.replace(matchedCode.code, '').trim();
                 } else {
                     setCodigoPais('+58');
+                    tel = tel.replace(/^\+58\s?/, '').trim();
                 }
                 tel = tel.replace(/^0+/, '');
                 setTelefono(tel);
@@ -73,20 +104,30 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
             }
 
             setClienteEncontrado(true);
+            setClienteNoEncontrado(false);
         } else {
+            setClienteId(null);
             setClienteEncontrado(false);
+            setClienteNoEncontrado(true);
         }
     };
 
-    // Buscar Equipo por Serial
+    // Buscar Equipo por Serial contra el backend
     const handleSearchEquipo = () => {
-        const equipo = EQUIPOS_MOCK[serial.trim()];
+        if (!catalogoEquipos) return;
+        const serialBusqueda = serial.trim().toUpperCase();
+        const equipo = catalogoEquipos.find((eq) => eq.serial.toUpperCase() === serialBusqueda);
+
         if (equipo) {
             setMarca(equipo.marca);
             setModelo(equipo.modelo);
+            setEquipoId(equipo.id);
             setEquipoEncontrado(true);
+            setEquipoNoEncontrado(false);
         } else {
+            setEquipoId(null);
             setEquipoEncontrado(false);
+            setEquipoNoEncontrado(true);
         }
     };
 
@@ -98,12 +139,16 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
         setTelefono('');
         setDireccion('');
         setClienteEncontrado(false);
+        setClienteNoEncontrado(false);
+        setClienteId(null);
         setSerial('');
         setMarca('');
         setModelo('');
         setFalla('');
         setObservaciones('');
         setEquipoEncontrado(false);
+        setEquipoNoEncontrado(false);
+        setEquipoId(null);
         setTecnicoId('');
     };
 
@@ -112,20 +157,82 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
         onClose();
     };
 
-    const handleSubmit = (e) => {
+    // ------- HANDLER PRINCIPAL: crea cliente/equipo si hace falta y luego la orden real
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+
         const cleanTel = telefono.trim().replace(/^0+/, '');
         const telefonoCompleto = cleanTel ? `${codigoPais} ${cleanTel}` : '';
-        const cedulaRifCompleta = `${tipoDoc}-${numeroDoc}`.trim();
+        const cedulaRifCompleta = `${tipoDoc}-${numeroDoc}`.toUpperCase().trim();
 
-        const nuevaOrden = {
-            cliente: { cedulaRif: cedulaRifCompleta, nombre, telefono: telefonoCompleto, direccion },
-            equipo: { serial, marca, modelo, falla, observaciones },
-            tecnicoId
-        };
-        onSubmit(nuevaOrden);
-        resetForm();
-        onClose();
+        setSubmitting(true);
+        try {
+            // 1) Asegurar cliente registrado (buscar por cédula/RIF o crearlo)
+            let idCliente = clienteId;
+            if (!idCliente) {
+                const clienteBuscado = catalogoClientes.find(
+                    (c) => c.cedulaRif.toUpperCase() === cedulaRifCompleta
+                );
+                if (clienteBuscado) {
+                    idCliente = clienteBuscado.id;
+                } else {
+                    const nuevoCliente = await createCliente({
+                        cedulaRif: cedulaRifCompleta,
+                        nombre,
+                        telefono: telefonoCompleto,
+                        direccion,
+                    });
+                    idCliente = nuevoCliente.id;
+                }
+            }
+
+            // 2) Asegurar equipo registrado (buscar por serial o crearlo)
+            let idEquipo = equipoId;
+            if (!idEquipo) {
+                const equipoBuscado = catalogoEquipos.find(
+                    (eq) => eq.serial.toUpperCase() === serial.trim().toUpperCase()
+                );
+                if (equipoBuscado) {
+                    idEquipo = equipoBuscado.id;
+                } else {
+                    const nuevoEquipo = await createEquipo({
+                        serial: serial.trim().toUpperCase(),
+                        marca,
+                        modelo,
+                        descripcion: observaciones,
+                        clienteId: idCliente,
+                    });
+                    idEquipo = nuevoEquipo.id;
+                }
+            }
+
+            const nuevaOrden = {
+                cliente: {
+                    id: idCliente,
+                    cedulaRif: cedulaRifCompleta,
+                    nombre,
+                    telefono: telefonoCompleto,
+                    direccion,
+                },
+                equipo: {
+                    id: idEquipo,
+                    serial: serial.trim().toUpperCase(),
+                    marca,
+                    modelo,
+                    falla,
+                    observaciones,
+                },
+                tecnicoId,
+            };
+            await onSubmit(nuevaOrden);
+            resetForm();
+        } catch (err) {
+            console.error('Error guardando la orden:', err);
+            alert(`Error: ${err.message}`);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -233,6 +340,11 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                             <CheckCircle2 size={14} /> Cliente registrado encontrado y autocompletado.
                         </p>
                     )}
+                    {clienteNoEncontrado && (
+                        <p className="text-[11px] text-amber-600 font-semibold mt-2 flex items-center gap-1">
+                            <AlertCircle size={14} /> Cédula/RIF no encontrada. Se registrará al crear la orden.
+                        </p>
+                    )}
                 </div>
 
                 {/* SECCIÓN: Datos del Equipo */}
@@ -298,6 +410,11 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                             <CheckCircle2 size={14} /> Historial del equipo encontrado y autocompletado.
                         </p>
                     )}
+                    {equipoNoEncontrado && (
+                        <p className="text-[11px] text-amber-600 font-semibold mt-2 flex items-center gap-1">
+                            <AlertCircle size={14} /> Serial no registrado. Se registrará al crear la orden.
+                        </p>
+                    )}
                 </div>
 
                 {/* SECCIÓN: Asignación de Técnico */}
@@ -309,19 +426,19 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                         <label className="text-xs font-semibold text-slate-700">
                             Asignar Técnico Responsable
                         </label>
-                        <select
+<select
                             name="tecnicoId"
                             value={tecnicoId}
                             onChange={(e) => setTecnicoId(e.target.value)}
-                            className="w-full bg-white text-xs font-medium text-slate-800 p-2.5 border border-[#E2E8F0] rounded-md outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all"
+                            disabled={loadingRegistros}
+                            className="w-full bg-white text-xs font-medium text-slate-800 p-2.5 border border-[#E2E8F0] rounded-md outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent transition-all disabled:opacity-60"
                         >
                             <option value="">-- Seleccionar Técnico (Opcional) --</option>
-                            <option value="1">Hector Luis Rodriguez (Técnico)</option>
-                            <option value="2">Dario Jose Jimenez (Técnico)</option>
-                            <option value="3">Domingo (Técnico)</option>
-                            <option value="4">Eloy (Técnico)</option>
+                            {tecnicos && tecnicos.map((tec) => (
+                                <option key={tec.id} value={tec.id}>{tec.nombre}</option>
+                            ))}
                         </select>
-                    </div>
+                </div>
                 </div>
 
                 {/* Acciones Finales del Formulario */}
@@ -329,8 +446,8 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                     <Button type="button" variant="secondary" onClick={handleClose}>
                         Cancelar
                     </Button>
-                    <Button type="submit" variant="primary">
-                        Guardar Orden de Servicio
+                    <Button type="submit" variant="primary" disabled={submitting}>
+                        {submitting ? 'Guardando...' : 'Guardar Orden de Servicio'}
                     </Button>
                 </div>
 

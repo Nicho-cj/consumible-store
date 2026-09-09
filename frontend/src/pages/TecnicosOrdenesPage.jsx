@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Wrench, Clock, AlertCircle, CheckCircle2, Play, FileText, UserCheck, Users } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Wrench, Clock, AlertCircle, CheckCircle2, Play, FileText, UserCheck, Users, RefreshCw, LogOut } from 'lucide-react';
 import Card from '../components/common/Card';
 import Table from '../components/common/Table';
 import Button from '../components/common/Button';
@@ -7,9 +7,9 @@ import StatusBadge from '../components/common/StatusBadge';
 import FilterBar from '../components/common/FilterBar';
 import TecnicoDiagnosticoModal from '../components/modals/TecnicoDiagnosticoModal';
 import { normalizeText } from '../utils/text';
-import { mockOrdenes, ORDER_STATUS } from '../data/ordenesData';
-
-const CURRENT_TECNICO_ID = 2;
+import { ORDER_STATUS } from '../utils/status';
+import { listOrdenes } from '../api/ordenes';
+import { listTecnicosPublicos } from '../api/entidades';
 
 const TECNICO_TAB_STATUS_MAP = {
     TODAS: [
@@ -26,14 +26,67 @@ const TECNICO_TAB_STATUS_MAP = {
     TERMINADAS: [ORDER_STATUS.LISTO_ENTREGA, ORDER_STATUS.ENTREGADO],
 };
 
-const TecnicoOrdenesPage = () => {
-    const [ordenes, setOrdenes] = useState(mockOrdenes);
+const TecnicoOrdenesPage = ({ onLogout }) => {
+    const [ordenes, setOrdenes] = useState([]);
+    const [tecnicos, setTecnicos] = useState([]);
+    // DECISION DEL NEGOCIO: el tecnico usa la vista COMUNITARIA (sin login).
+    // El selector de tecnico de la PC es libre y el toggle "todas / solo mis ordenes" manual.
+    const [tecnicoSeleccionado, setTecnicoSeleccionado] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('TODAS');
     const [soloMisOrdenes, setSoloMisOrdenes] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+
+    // FASE 5-1: catalogo real de tecnicos (GET /tecnicos/publicos) para esta PC
+    useEffect(() => {
+        listTecnicosPublicos()
+            .then(setTecnicos)
+            .catch((err) => console.error('Error cargando técnicos:', err));
+    }, []);
+
+    useEffect(() => {
+        let cancel = false;
+        listOrdenes({
+            tecnicoId: soloMisOrdenes && tecnicoSeleccionado ? tecnicoSeleccionado : undefined,
+        })
+            .then((data) => {
+                if (!cancel) {
+                    setOrdenes(data);
+                    setError('');
+                }
+            })
+            .catch((err) => {
+                if (!cancel) {
+                    console.error('Error cargando órdenes:', err);
+                    setError(err.message);
+                }
+            })
+            .finally(() => {
+                if (!cancel) setLoading(false);
+            });
+        return () => { cancel = true; };
+    }, [soloMisOrdenes, tecnicoSeleccionado]);
+
+    // recarga explicita (usuario): muestra el indicador de carga
+    const reloadOrdenes = () => {
+        setLoading(true);
+        listOrdenes({
+            tecnicoId: soloMisOrdenes && tecnicoSeleccionado ? tecnicoSeleccionado : undefined,
+        })
+            .then((data) => {
+                setOrdenes(data);
+                setError('');
+            })
+            .catch((err) => {
+                console.error('Error cargando órdenes:', err);
+                setError(err.message);
+            })
+            .finally(() => setLoading(false));
+    };
 
     const filterFields = [
         {
@@ -55,15 +108,17 @@ const TecnicoOrdenesPage = () => {
         setIsModalOpen(true);
     };
 
-    const handleSaveOrden = (ordenActualizada) => {
-        setOrdenes((prev) =>
-            prev.map((o) => (o.id === ordenActualizada.id ? ordenActualizada : o))
-        );
+    // Refrescar desde el backend tras cualquier accion del tecnico en la ficha
+    const handleSaveOrden = () => {
+        setIsModalOpen(false);
+        reloadOrdenes();
     };
 
     const filteredOrders = useMemo(() => {
         return ordenes.filter((orden) => {
-            if (soloMisOrdenes && orden.tecnicoId !== CURRENT_TECNICO_ID) return false;
+            if (soloMisOrdenes && tecnicoSeleccionado && String(orden.tecnicoId) !== String(tecnicoSeleccionado)) {
+                return false;
+            }
 
             const allowedStatuses = TECNICO_TAB_STATUS_MAP[activeTab] || [];
             if (!allowedStatuses.includes(orden.estado)) return false;
@@ -77,7 +132,7 @@ const TecnicoOrdenesPage = () => {
 
             return matchesSerial || matchesClient || matchesEquipo || matchesCodigo || matchesTecnico;
         });
-    }, [ordenes, activeTab, searchQuery, soloMisOrdenes]);
+    }, [ordenes, activeTab, searchQuery, soloMisOrdenes, tecnicoSeleccionado]);
 
     const columns = [
         { key: 'codigo', label: 'N° Orden', className: 'font-semibold text-slate-800' },
@@ -162,16 +217,41 @@ const TecnicoOrdenesPage = () => {
                     <p className="text-xs text-slate-500 mt-1">Gestión e historial de órdenes de servicio en taller</p>
                 </div>
 
-                <button
-                    onClick={() => setSoloMisOrdenes(!soloMisOrdenes)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${soloMisOrdenes
-                            ? 'bg-[#55720C] text-white border-[#55720C] shadow-sm'
-                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                        }`}
-                >
-                    <Users size={14} />
-                    {soloMisOrdenes ? 'Viendo solo mis órdenes' : 'Ver órdenes de todos'}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                    {/* Vista comunitaria: el tecnico de esta PC se selecciona del catalogo real */}
+                    <select
+                        value={tecnicoSeleccionado}
+                        onChange={(e) => setTecnicoSeleccionado(e.target.value)}
+                        className="bg-white text-xs font-medium text-slate-700 p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#97C719] focus:border-transparent"
+                    >
+                        <option value="">— Seleccionar técnico —</option>
+                        {tecnicos.map((t) => (
+                            <option key={t.id} value={t.id}>{t.nombre}</option>
+                        ))}
+                    </select>
+
+                    <Button variant="secondary" icon={RefreshCw} onClick={reloadOrdenes} disabled={loading}>
+                        Actualizar
+                    </Button>
+
+                    <button
+                        onClick={() => {
+                            setSoloMisOrdenes(!soloMisOrdenes);
+                            reloadOrdenes();
+                        }}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${soloMisOrdenes
+                                ? 'bg-[#55720C] text-white border-[#55720C] shadow-sm'
+                                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Users size={14} />
+                        {soloMisOrdenes ? 'Viendo solo mis órdenes' : 'Ver órdenes de todos'}
+                    </button>
+
+                    <Button variant="danger" icon={LogOut} onClick={onLogout}>
+                        Salir
+                    </Button>
+                </div>
             </div>
 
             <div className="flex border-b border-slate-200 gap-2 overflow-x-auto">
@@ -197,14 +277,19 @@ const TecnicoOrdenesPage = () => {
             <FilterBar fields={filterFields} onReset={handleResetFilters} />
 
             <Card>
-                <Table
-                    columns={columns}
-                    data={filteredOrders}
-                    emptyMessage="No se encontraron órdenes para este filtro."
-                />
+                {loading && !error && <p className="p-4 text-sm text-slate-500">Cargando órdenes...</p>}
+                {error && <p className="p-4 text-sm text-red-500">Error al cargar: {error}</p>}
+                {!loading && !error && (
+                    <Table
+                        columns={columns}
+                        data={filteredOrders}
+                        emptyMessage="No se encontraron órdenes para este filtro."
+                    />
+                )}
             </Card>
 
             <TecnicoDiagnosticoModal
+                key={selectedOrder?.id ?? 'sin-orden'}
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 order={selectedOrder}
