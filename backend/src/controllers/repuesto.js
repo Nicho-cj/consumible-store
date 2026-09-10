@@ -1,5 +1,6 @@
 import { DetalleRepuestoModel } from "../models/repuesto.js";
 import { registrarAuditoria } from "../utils/auditoria.js";
+import { notificarOrdenes } from "../utils/realtime.js";
 
 // @REVISAR: controller nuevo - antes no existia controllers/repuesto.js
 export class DetalleRepuestoController {
@@ -25,6 +26,7 @@ export class DetalleRepuestoController {
                accion: 'Registro de Repuesto',
                detalles: `Repuesto "${data.nombre}" (${data.cantidad}) en la orden id=${data.id_orden}`,
           });
+          notificarOrdenes();
           res.status(201).json(resultado)
      }
 
@@ -50,6 +52,7 @@ export class DetalleRepuestoController {
                accion: 'Eliminación de Repuesto',
                detalles: `Se eliminó el detalle de repuesto id=${id}`,
           });
+          notificarOrdenes();
           res.status(200).json(resultado)
      }
 

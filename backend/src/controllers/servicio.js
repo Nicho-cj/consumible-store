@@ -1,5 +1,6 @@
 import { NotaServicioModel } from "../models/servicio.js";
 import { registrarAuditoria } from "../utils/auditoria.js";
+import { notificarOrdenes } from "../utils/realtime.js";
 
 // @REVISAR: controller nuevo - antes NO existia controllers/servicio.js, por eso la ruta crasheaba al importarla
 export class ServicioController {
@@ -25,6 +26,7 @@ export class ServicioController {
                accion: 'Diagnóstico Técnico',
                detalles: `Se registró la nota de servicio de la orden id=${data.id_orden}`,
           });
+          notificarOrdenes();
           res.status(201).json(resultado)
      }
 
@@ -32,6 +34,7 @@ export class ServicioController {
           const id = req.params.id
           const data = req.body
           const servicio = await NotaServicioModel.update(id, data)
+          notificarOrdenes();
           res.status(200).json(servicio)
      }
 
@@ -44,6 +47,7 @@ export class ServicioController {
                accion: 'Actualización de Nota de Servicio',
                detalles: `Se actualizó la nota de servicio id=${id}`,
           });
+          notificarOrdenes();
           res.status(200).json(servicio)
      }
 

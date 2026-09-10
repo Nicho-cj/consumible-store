@@ -5,10 +5,12 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
+import Toast from '../components/common/Toast';
 import TecnicoCard from '../components/common/TecnicoCard';
 import TecnicoHistorialModal from '../components/modals/TecnicoHistorialModal';
+import TecnicoOrdenesModal from '../components/modals/TecnicoOrdenesModal';
 import { normalizeText } from '../utils/text';
-import { listTecnicos, createTecnico } from '../api/entidades';
+import { listTecnicos, createTecnico, updateTecnico } from '../api/entidades';
 import { listOrdenes } from '../api/ordenes';
 
 const TecnicosPage = () => {
@@ -28,6 +30,15 @@ const TecnicosPage = () => {
     const [submitError, setSubmitError] = useState('');
 
     const [selectedTecnicoHistory, setSelectedTecnicoHistory] = useState(null);
+    const [tecnicoOrdenesView, setTecnicoOrdenesView] = useState(null);
+    const [togglingId, setTogglingId] = useState(null);
+
+    // Aviso flotante reutilizado
+    const [toast, setToast] = useState(null);
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        window.setTimeout(() => setToast(null), 4000);
+    };
 
     useEffect(() => {
         let cancel = false;
@@ -145,11 +156,27 @@ const TecnicosPage = () => {
         return map;
     }, [ordenes]);
 
-    const apertura = (tecnico) => {
-        const tecOrdenes = (ordenesPorTecnico[tecnico.id] || [])
-            .filter((o) => o.estado !== 'ENTREGADO' && o.estado !== 'CANCELADO');
-        alert(`Mostrando órdenes activas de: ${tecnico.nombre}\n${tecOrdenes.length} órdenes en taller:\n- ` +
-            tecOrdenes.map((o) => `${o.codigo} (${o.estado})`).join('\n- ') || 'Sin órdenes activas.');
+    const handleViewOrdenes = (tecnico) => {
+        setTecnicoOrdenesView(tecnico);
+    };
+
+    const handleToggleStatus = async (tecnico) => {
+        if (togglingId) return;
+        setTogglingId(tecnico.id);
+        try {
+            const actualizado = await updateTecnico(tecnico.id, { activo: tecnico.estado !== 'ACTIVE' });
+            setTecnicos((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
+            showToast(
+                actualizado.estado === 'ACTIVE'
+                    ? `${actualizado.nombre} activado correctamente.`
+                    : `${actualizado.nombre} desactivado (fuera de servicio).`
+            );
+        } catch (err) {
+            console.error('Error actualizando técnico:', err);
+            showToast(`Error al actualizar el técnico: ${err.message}`, 'error');
+        } finally {
+            setTogglingId(null);
+        }
     };
 
     return (
@@ -225,8 +252,9 @@ const TecnicosPage = () => {
                                     .filter((o) => o.estado !== 'ENTREGADO' && o.estado !== 'CANCELADO')
                                     .map((o) => ({ codigo: o.codigo, estatus: o.estado })),
                             }}
-                            onViewOrders={apertura}
+                            onViewOrders={handleViewOrdenes}
                             onViewHistory={() => setSelectedTecnicoHistory(tec)}
+                            onToggleStatus={handleToggleStatus}
                         />
                     ))}
                 </div>
@@ -278,6 +306,14 @@ const TecnicosPage = () => {
                 onClose={() => setSelectedTecnicoHistory(null)}
                 technician={selectedTecnicoHistory}
             />
+
+            <TecnicoOrdenesModal
+                isOpen={!!tecnicoOrdenesView}
+                onClose={() => setTecnicoOrdenesView(null)}
+                technician={tecnicoOrdenesView}
+            />
+
+            <Toast message={toast?.message} type={toast?.type} onDismiss={() => setToast(null)} />
         </div>
     );
 };

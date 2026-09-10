@@ -10,6 +10,7 @@ import { normalizeText } from '../utils/text';
 import { ORDER_STATUS } from '../utils/status';
 import { listOrdenes } from '../api/ordenes';
 import { listTecnicosPublicos } from '../api/entidades';
+import { useOrdenesRealtime } from '../api/realtime';
 
 const TECNICO_TAB_STATUS_MAP = {
     TODAS: [
@@ -87,6 +88,19 @@ const TecnicoOrdenesPage = ({ onLogout }) => {
             })
             .finally(() => setLoading(false));
     };
+
+    // recarga silenciosa en tiempo real: mantiene filtros y pestañas abiertas
+    const refreshSilencioso = () => {
+        listOrdenes({
+            tecnicoId: soloMisOrdenes && tecnicoSeleccionado ? tecnicoSeleccionado : undefined,
+        })
+            .then((data) => {
+                setOrdenes(data);
+                setError('');
+            })
+            .catch((err) => console.error('Error refrescando órdenes en tiempo real:', err));
+    };
+    useOrdenesRealtime(refreshSilencioso, [soloMisOrdenes, tecnicoSeleccionado]);
 
     const filterFields = [
         {

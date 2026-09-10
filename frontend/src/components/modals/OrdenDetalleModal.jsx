@@ -60,10 +60,11 @@ const FlowProgress = ({ currentStatus }) => {
     );
 };
 
-const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
+const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) => {
     const [showCloseForm, setShowCloseForm] = useState(false);
     const [contadorFinal, setContadorFinal] = useState('');
     const [montoCobro, setMontoCobro] = useState('');
+    const [numeroFactura, setNumeroFactura] = useState('');
     const [closeError, setCloseError] = useState('');
     const [saving, setSaving] = useState(false);
 
@@ -78,6 +79,8 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
         try {
             const updated = await responderCotizacion(order.id, true);
             onUpdateOrder?.(updated);
+            onNotify?.('Cotización aprobada. La orden volvió a la vista del técnico.');
+            onClose();
         } catch (err) {
             alert(`Error al aprobar la cotización: ${err.message}`);
         } finally {
@@ -91,6 +94,8 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
         try {
             const updated = await responderCotizacion(order.id, false);
             onUpdateOrder?.(updated);
+            onNotify?.('Cotización rechazada. La orden fue cancelada.');
+            onClose();
         } catch (err) {
             alert(`Error al rechazar la cotización: ${err.message}`);
         } finally {
@@ -102,6 +107,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
         setShowCloseForm(true);
         setContadorFinal(order.contadorInicial || '');
         setMontoCobro('');
+        setNumeroFactura('');
         setCloseError('');
     };
 
@@ -125,14 +131,21 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
 
         setSaving(true);
         try {
-            // PATCH /ordenes/:id -> estado ENTREGADO + contador_final + monto_cobro (RF-08/RF-09)
-            const updated = await patchOrden(order.id, {
+            // PATCH /ordenes/:id -> estado ENTREGADO + contador_final + monto_cobro + numero_factura (RF-08/RF-09)
+            const payload = {
                 estado: 'ENTREGADO',
                 contador_final: cnt,
                 monto_cobro: monto,
-            });
+            };
+            const factura = numeroFactura.trim();
+            const numFactura = parseInt(factura.replace(/[^\d]/g, ''), 10);
+            if (factura && !Number.isNaN(numFactura)) payload.numero_factura = numFactura;
+
+            const updated = await patchOrden(order.id, payload);
             onUpdateOrder?.(updated);
             setShowCloseForm(false);
+            onNotify?.(factura ? `Entrega registrada. Factura N° ${numFactura}.` : 'Entrega registrada con éxito.');
+            onClose();
         } catch (err) {
             setCloseError(err.message);
         } finally {
@@ -255,7 +268,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
                     )}
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                     <div className="flex items-center gap-2">
                         <Wrench size={14} className="text-slate-400" />
                         <span className="text-slate-500">Técnico Asignado:</span>
@@ -266,6 +279,13 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
                             <Hash size={14} className="text-slate-400" />
                             <span className="text-slate-500">Contador Inicial:</span>
                             <span className="font-mono font-semibold text-slate-800">{order.contadorInicial.toLocaleString()}</span>
+                        </div>
+                    )}
+                    {order.numeroFactura && (
+                        <div className="flex items-center gap-2">
+                            <Hash size={14} className="text-emerald-500" />
+                            <span className="text-slate-500">N° Factura:</span>
+                            <span className="font-mono font-bold text-slate-800">{order.numeroFactura}</span>
                         </div>
                     )}
                 </div>
@@ -327,6 +347,17 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder }) => {
                                     className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
                                     placeholder="0.00"
                                 />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">N° Factura (opcional)</label>
+                                <input
+                                    type="text"
+                                    value={numeroFactura}
+                                    onChange={(e) => { setNumeroFactura(e.target.value); setCloseError(''); }}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                                    placeholder="Ej. 0001-234567"
+                                />
+                                <span className="text-[10px] text-slate-400 mt-1 block">Si se registra, se muestra en el comprobante.</span>
                             </div>
                         </div>
                         {closeError && (

@@ -2,6 +2,7 @@
 
 import { apiFetch } from './client';
 import { normalizeCliente, normalizeEquipo, normalizeTecnico, normalizeOrden } from './mappers';
+import { sanitizeForApi } from '../utils/text';
 
 // ---- CLIENTES (solo admin) ----
 export async function listClientes() {
@@ -11,10 +12,10 @@ export async function listClientes() {
 
 export async function createCliente(cliente) {
     const data = await apiFetch('/clientes', { method: 'POST', body: {
-        ci_rif: cliente.cedulaRif,
-        nombre_completo: cliente.nombre,
-        telefono: cliente.telefono,
-        direccion: cliente.direccion,
+        ci_rif: sanitizeForApi(cliente.cedulaRif),
+        nombre_completo: sanitizeForApi(cliente.nombre),
+        telefono: sanitizeForApi(cliente.telefono),
+        direccion: sanitizeForApi(cliente.direccion),
     }, auth: true });
     return normalizeCliente(data);
 }
@@ -42,11 +43,11 @@ export async function getEquipoOrdenes(idEquipo) {
 
 export async function createEquipo(equipo) {
     const data = await apiFetch('/equipos', { method: 'POST', body: {
-        nro_serial: equipo.serial,
-        marca: equipo.marca,
-        modelo: equipo.modelo,
-        descripcion: equipo.descripcion,
-        tipo_equipo: equipo.tipo,
+        nro_serial: sanitizeForApi(equipo.serial),
+        marca: sanitizeForApi(equipo.marca),
+        modelo: sanitizeForApi(equipo.modelo),
+        descripcion: sanitizeForApi(equipo.descripcion),
+        tipo_equipo: sanitizeForApi(equipo.tipo),
         id_cliente: equipo.clienteId,
         contador_bn: equipo.contadorBN ?? 0,
         contador_color: equipo.contadorColor ?? 0,
@@ -72,8 +73,14 @@ export async function listTecnicos() {
 
 export async function createTecnico(tecnico) {
     const data = await apiFetch('/tecnicos', { method: 'POST', body: {
-        nombre: tecnico.nombre,
+        nombre: sanitizeForApi(tecnico.nombre),
         activo: tecnico.estado === 'ACTIVE',
     }, auth: true });
     return normalizeTecnico(data);
+}
+
+// PATCH /tecnicos/:id - permitido (whitelist) activar/desactivar: { activo: boolean }
+export async function updateTecnico(id, data) {
+    const res = await apiFetch(`/tecnicos/${id}`, { method: 'PATCH', body: data, auth: true });
+    return normalizeTecnico(res);
 }

@@ -2,6 +2,8 @@
 // DECISION: la capa api normaliza a camelCase para que las paginas conserven
 // sus campos actuales (id, codigo, clienteNombre, equipoSerie, etc.).
 
+import { sanitizeForApi } from '../utils/text';
+
 function toDate(value) {
     if (!value) return null;
     const d = new Date(value);
@@ -93,8 +95,8 @@ export function normalizeOrden(raw) {
 // Payload para POST /ordenes (la API autogenera codigo_orden y fecha_ingreso)
 export function denormalizeOrdenPayload(order) {
     const payload = {
-        tipo_servicio: order.tipoServicio || 'Revisión y Diagnóstico',
-        falla_reportada: order.fallaReportada || '',
+        tipo_servicio: sanitizeForApi(order.tipoServicio || 'Revisión y Diagnóstico'),
+        falla_reportada: sanitizeForApi(order.fallaReportada || ''),
         contador_inicio: order.contadorInicial || order.contadorInicialBN || 0,
         id_cliente: order.idCliente,
         id_equipo: order.idEquipo,
@@ -107,10 +109,10 @@ export function denormalizeOrdenPayload(order) {
 // Payload para PATCH /servicios/{id_orden} (nota de servicio)
 export function denormalizeNotaPayload(data) {
     return {
-        diagnostico_falla: data.diagnosticoFalla ?? data.diagnostico ?? undefined,
-        trabajo_realizado: data.trabajoRealizado ?? data.diagnostico ?? undefined,
+        diagnostico_falla: sanitizeForApi(data.diagnosticoFalla ?? data.diagnostico) ?? undefined,
+        trabajo_realizado: sanitizeForApi(data.trabajoRealizado ?? data.diagnostico) ?? undefined,
         contador_final: data.contadorFinal ?? undefined,
-        observaciones: data.observaciones ?? undefined,
+        observaciones: sanitizeForApi(data.observaciones) ?? undefined,
     };
 }
 

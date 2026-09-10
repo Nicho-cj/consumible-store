@@ -1,8 +1,8 @@
-import { History } from 'lucide-react';
+import { History, Power } from 'lucide-react';
 import Card from './Card';
 import Button from './Button';
 
-const TecnicoCard = ({ technician, onViewOrders, onViewHistory }) => {
+const TecnicoCard = ({ technician, onViewOrders, onViewHistory, onToggleStatus }) => {
     const {
         nombre,
         cargo,
@@ -18,6 +18,7 @@ const TecnicoCard = ({ technician, onViewOrders, onViewHistory }) => {
     };
 
     const currentStatus = statusConfig[estado] || statusConfig.ACTIVE;
+    const isActive = estado === 'ACTIVE';
 
     return (
         <Card className="p-5 flex flex-col justify-between h-full hover:shadow-md transition-shadow">
@@ -66,7 +67,7 @@ const TecnicoCard = ({ technician, onViewOrders, onViewHistory }) => {
             </div>
 
             {/* Footer: Acciones del Técnico */}
-            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-4 mt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
                 <button
                     type="button"
                     onClick={() => onViewOrders && onViewOrders(technician)}
@@ -75,15 +76,27 @@ const TecnicoCard = ({ technician, onViewOrders, onViewHistory }) => {
                     Ver todas las órdenes
                 </button>
 
-                <Button
-                    size="sm"
-                    variant="secondary"
-                    icon={History}
-                    onClick={() => onViewHistory && onViewHistory(technician)}
-                    className="text-xs"
-                >
-                    Historial
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        size="sm"
+                        variant={isActive ? 'danger' : 'primary'}
+                        icon={Power}
+                        onClick={() => onToggleStatus && onToggleStatus(technician)}
+                        className="text-xs"
+                    >
+                        {isActive ? 'Desactivar' : 'Activar'}
+                    </Button>
+
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={History}
+                        onClick={() => onViewHistory && onViewHistory(technician)}
+                        className="text-xs"
+                    >
+                        Historial
+                    </Button>
+                </div>
             </div>
         </Card>
     );

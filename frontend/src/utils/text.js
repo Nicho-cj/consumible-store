@@ -13,7 +13,7 @@ export const normalizeText = (text = '') => {
 
 /**
  * Sanitiza campos de texto antes de enviarlos al Backend.
- * Convierte a minúsculas, remueve acentos y colapsa espacios dobles.
+ * Convierte a minúsculas, remueve acentos y comas, y colapsa espacios dobles.
  */
 export const sanitizeForApi = (value = '') => {
     if (typeof value !== 'string') return value;
@@ -22,6 +22,7 @@ export const sanitizeForApi = (value = '') => {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '') // Elimina acentos/tildes
         .toLowerCase()                   // Fuerza minúsculas
+        .replace(/,/g, '')               // Elimina comas
         .replace(/\s+/g, ' ')            // Convierte múltiples espacios en uno solo
         .trim();                         // Elimina espacios al inicio y final
 };

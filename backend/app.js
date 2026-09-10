@@ -3,6 +3,7 @@ import { corsMiddleware } from './src/middlewares/cors.js'
 import { errorHandler } from "./src/middlewares/errorHandler.js";
 import { authenticate } from './src/middlewares/auth.js';
 import { requireRole } from './src/middlewares/role.js';
+import { setupRealtime } from './src/utils/realtime.js';
 
 const PORT = process.env.BACK_PORT
 const HOST = process.env.FRONT_HOST
@@ -64,6 +65,9 @@ app.use((req, res) => { res.status(404).json({
 // MANEJO DE ERRORES
 app.use(errorHandler)
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Backend funcionando ( http://localhost:${PORT} )`)
 })
+
+// Tiempo real: WS /ws para que las vistas de ordenes se refresquen al instante
+setupRealtime(server)

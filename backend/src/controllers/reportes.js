@@ -3,11 +3,13 @@ import { query } from "../config/db.js";
 // @REVISAR: controller de reportes - RF-12: reporte de servicios por tecnico en rango de fechas
 export class ReportesController {
     // GET /reportes/servicios?tecnico_id=X&desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+    // Incluye LISTO_ENTREGA (contador/monto ya registrados, trabajo terminado) + ENTREGADO.
+    // El rango de fechas se aplica sobre la fecha de INGRESO (consistente con el filtro del frontend).
     static async serviciosPorTecnico(req, res) {
         const { tecnico_id, desde, hasta } = req.query;
 
         let consulta = `
-            SELECT o.id_orden, o.codigo_orden, o.fecha_ingreso, o.fecha_salida,
+            SELECT o.id_orden, o.codigo_orden, o.fecha_ingreso, o.fecha_salida, o.estado,
                    o.monto_cobro, o.tipo_servicio, o.falla_reportada, o.cotizacion_aprobada,
                    t.id_tecnico, t.nombre AS tecnico_nombre,
                    n.diagnostico_falla, n.trabajo_realizado, n.contador_final,
@@ -18,7 +20,7 @@ export class ReportesController {
             LEFT JOIN nota_servicio n ON o.id_orden = n.id_orden
             LEFT JOIN cliente c ON o.id_cliente = c.id_cliente
             LEFT JOIN equipo e ON o.id_equipo = e.id_equipo
-            WHERE o.fecha_salida IS NOT NULL
+            WHERE o.estado IN ('LISTO_ENTREGA', 'ENTREGADO')
         `;
         const values = [];
 
@@ -29,42 +31,43 @@ export class ReportesController {
 
         if (desde) {
             values.push(desde);
-            consulta += ` AND o.fecha_salida >= $${values.length}`;
+            consulta += ` AND o.fecha_ingreso >= $${values.length}`;
         }
 
         if (hasta) {
             values.push(hasta);
-            consulta += ` AND o.fecha_salida <= $${values.length}`;
+            consulta += ` AND o.fecha_ingreso <= $${values.length}`;
         }
 
-        consulta += ` ORDER BY t.nombre, o.fecha_salida`;
+        consulta += ` ORDER BY t.nombre, o.fecha_ingreso`;
 
         const result = await query(consulta, values);
         res.status(200).json(result.rows);
     }
 
     // GET /reportes/liquidacion?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+    // Computa la liquidación sobre órdenes LISTO_ENTREGA + ENTREGADO (trabajo ya finalizado).
     static async liquidacionPorTecnico(req, res) {
         const { desde, hasta } = req.query;
 
         let consulta = `
             SELECT t.id_tecnico, t.nombre AS tecnico_nombre,
-                   COUNT(o.id_orden) FILTER (WHERE o.fecha_salida IS NOT NULL AND o.cotizacion_aprobada = TRUE) AS total_servicios,
-                   COALESCE(SUM(o.monto_cobro) FILTER (WHERE o.fecha_salida IS NOT NULL AND o.cotizacion_aprobada = TRUE), 0) AS total_monto
+                   COUNT(o.id_orden) FILTER (WHERE o.estado IN ('LISTO_ENTREGA','ENTREGADO') AND o.cotizacion_aprobada = TRUE) AS total_servicios,
+                   COALESCE(SUM(o.monto_cobro) FILTER (WHERE o.estado IN ('LISTO_ENTREGA','ENTREGADO') AND o.cotizacion_aprobada = TRUE), 0) AS total_monto
             FROM tecnico t
             LEFT JOIN orden_servicio o ON o.id_tecnico = t.id_tecnico
-               AND o.fecha_salida IS NOT NULL
+               AND o.estado IN ('LISTO_ENTREGA','ENTREGADO')
                AND o.cotizacion_aprobada = TRUE
         `;
         const values = [];
         const conditions = [];
 
         if (desde) {
-            conditions.push(`o.fecha_salida >= $${values.length + 1}`);
+            conditions.push(`o.fecha_ingreso >= $${values.length + 1}`);
             values.push(desde);
         }
         if (hasta) {
-            conditions.push(`o.fecha_salida <= $${values.length + 1}`);
+            conditions.push(`o.fecha_ingreso <= $${values.length + 1}`);
             values.push(hasta);
         }
 

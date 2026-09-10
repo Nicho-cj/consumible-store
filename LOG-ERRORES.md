@@ -441,3 +441,107 @@ al admin logueado y limitando al técnico a su estación.
 - BD: solo usuarios ADMIN_RECEPCION (maria, danirys, jesus).
 - lint: 0 errores | vitest: 11/11 | build production: OK.
 - Puertos vivos: :3000 (backend) y :5173 (vite dev).
+
+---
+
+## FASE 9 — Calidad de datos, UX de cotización/entrega y tiempo real (COMPLETADA ✅)
+
+### 1. Normalizacion al escribir en la BD (sin comas, todo minusculas)
+- utils/text.js: sanitizeForApi() ahora TAMBIEN elimina comas (ademas de acentos,
+  minusculas y colapso de espacios).
+- api/mappers.js: denormalizeOrdenPayload() y denormalizeNotaPayload() sanitizan el texto
+  de usuario (tipo_servicio, falla_reportada, diagnostico, trabajo, observaciones).
+  El campo "estado" JAMAS pasa por ahi (se envia directo como enum, no sanitiza).
+- api/entidades.js: createCliente() / createEquipo() (incluye nro_serial) / createTecnico()
+  sanitizan antes de enviar. Las busquedas siguen comparando con toUpperCase, ningun break.
+- utils/text.test.js: 3 tests nuevos (comas eliminadas + valores no string). Total 8/8.
+  Nota: sanitizeForApi(undefined) con parametro por defecto devuelve '' (no undefined).
+
+### 2. Cotizacion: el modal se cierra con aviso (Toast) al aprobar/rechazar
+- components/common/Toast.jsx (NUEVO): aviso flotante autohide 4s (exito/error + boton cerrar).
+- OrdenDetalleModal.jsx: nueva prop onNotify; al aprobar -> "Cotización aprobada. La orden
+  volvió a la vista del técnico" y cierra; al rechazar -> "Cotización rechazada. La orden fue
+  cancelada" y cierra.
+- OrdenesPage.jsx y DashboardPage.jsx: toast + onNotify; Dashboard ahora pasa
+  onUpdateOrder={reload} (era la causa raiz del modal colgado: aprobaba pero nada refrescaba).
+
+### 3. Reporte de pago de tecnicos: incluye LISTO_ENTREGA + ENTREGADO
+- controllers/reportes.js: serviciosPorTecnico() -> WHERE o.estado IN ('LISTO_ENTREGA',
+  'ENTREGADO') (antes: fecha_salida IS NOT NULL, dejaba fuera las listas); el rango de fechas
+  ahora filtra por fecha_ingreso (consistente con el filtro del frontend); SELECT ahora trae
+  o.estado. liquidacionPorTecnico() igual (estado en vez de fecha_salida).
+- ReportesPage.jsx: mapeo agrega "estado" + nueva columna "Estado" con StatusBadge
+  (nuevo import).
+
+### 4. Entrega: factura opcional + cierre automatico con aviso
+- OrdenDetalleModal.jsx: campo "N° Factura (opcional)" en el formulario de entrega; handleDeliver
+  solo envia numero_factura si trae numeros (parseInt de digitos, evita "abc"); tras guardar
+  cierra el modal y avisa con el numero de factura registrado.
+
+### 5. Tiempo real por WebSockets (backend + frontend)
+- Backend: dependencia "ws" instalada; utils/realtime.js (NUEVO): WebSocketServer en la ruta
+  /ws sobre el MISMO http.Server del app.listen; token OPCIONAL (vista comunitaria sin login);
+  si el token es invalido -> close 4001; heartbeat 30s para limpiar muertas; notificarOrdenes()
+  emite {type:'ordenes:update'} a todos.
+- app.js: captura el server de app.listen y llama setupRealtime(server).
+- Emisores del evento: OrdenController (create, update, patch, delete, responderCotizacion
+  aprobada/rechazada, cambiarTecnico, registrarFactura), ServicioController (create, update,
+  patch), DetalleRepuestoController (create, delete).
+- Frontend: api/realtime.js (NUEVO). WebSocket nativo (sin dependencia). Gestor singleton por
+  pestana: un solo socket, suscriptores Set, reconexion con backoff (1s->15s), reconexion al
+  cambiar el token (sessionStorage), no conecta si window undefined (tests). Hook
+  useOrdenesRealtime(cb, deps) -> el ref se actualiza dentro de un useEffect (regla
+  react-hooks/refs de eslint) y la suscripcion se recrea con las deps.
+- Páginas suscritas: OrdenesPage, TecnicosOrdenesPage y DashboardPage -> recarga SILENCIOSA
+  (re-fetch sin tocar loading, mantiene filtros/tabs/modal abiertos).
+
+### Verificacion (FASE 9)
+- Login jesus -> 200 (sin regresion; se detecto y descarto un falso 500 por quoting de curl).
+- Reporte con datos de prueba: filas LISTO_ENTREGA (sin fecha_salida) y ENTREGADO aparecen,
+  con campo estado. Registros de prueba eliminados; la BD queda con las ordenes reales
+  (ORD-2026-001 CANCELADO, ORD-2026-003 y ORD-2026-004 ENTREGADO).
+- WebSocket: conexion /ws OK; al crear y borrar una orden de prueba llegan 2 mensajes
+  "ordenes:update"; token invalido -> close 4001. La orden ORD-2026-005 de prueba fue eliminada.
+- Frontend: lint 0 errores | vitest 13/13 | build production OK.
+- Backend reiniciado con el codigo de la FASE 9 (boot sin errores, escucha en :3000).
+
+---
+
+## FASE 10 — Factura en detalle, aviso estilizado y activar/desactivar técnico (COMPLETADA ✅)
+
+### 1. N° Factura visible al consultar una orden (RF-10 en UI)
+- OrdenDetalleModal.jsx: en la barra inferior (Técnico Asignado / Contador Inicial) se agrego
+  el item "N° Factura" (icono Hash verde) cuando order.numeroFactura existe (ya venia del JOIN
+  via normalizeOrden -> raw.numero_factura). La barra pasa a flex-wrap para acomodar 3 items.
+- Como Control de Órdenes y Dashboard Panel de Control usan el MISMO modal, el cambio cubre
+  ambos sitios. NO se agrego columna en las tablas (decision del usuario: solo al consultar).
+
+### 2. "Ver todas las órdenes" estilizado (se elimino el alert())
+- components/modals/TecnicoOrdenesModal.jsx (NUEVO): reutiliza Modal + StatusBadge (mismo
+  estilo de TecnicoHistorialModal), muestra "Órdenes Activas - {nombre}" con N° Orden + Estatus.
+- TecnicosPage.jsx: el alert() de "apertura" se reemplaza por abrir el modal (handleViewOrdenes).
+  Los alert() de error que quedan en otros modales no se tocaron (fuera de alcance).
+
+### 3. Activar / Desactivar técnico desde la UI (sin tocar la BD)
+- Backend: NO requirio cambios (PATCH /tecnicos/:id ya acepta "activo" via whitelist, solo admin).
+- api/entidades.js: nuevo updateTecnico(id, { activo }) -> PATCH /tecnicos/:id con auth.
+- TecnicoCard.jsx: boton reutilizando Button con icono Power -> "Desactivar" (variant danger)
+  si esta Activo, "Activar" (variant primary) si no.
+- TecnicosPage.jsx: handleToggleStatus llama updateTecnico, actualiza la lista en memoria y
+  avisa con el Toast de la FASE 9 ("Técnico X activado/desactivado"); guard contra doble click.
+
+### Verificacion (FASE 10)
+- PATCH /tecnicos/1 activo:false (con token) -> 200 y GET /tecnicos/publicos LO EXCLUYE;
+  activo:true -> 200 y vuelve a aparecer. Quedo reactivado (4 tecnicos visibles).
+- Flujo E2E de entrega con factura (orden temporal ORD-2026-011): REGISTRADO -> EN_DIAGNOSTICO
+  (con tecnico) -> SOLUCION_COTIZACION -> aprobada (PROCESO_TECNICO) -> LISTO_ENTREGA ->
+  nota completa (PATCH /servicios, exigido por RN-04) -> ENTREGADO con contador_final,
+  monto_cobro y numero_factura=12345. GET /ordenes/11 (JOINs) devuelve numero_factura=12345,
+  por lo que el modal de Control y Dashboard lo renderiza como "N° Factura".
+  Registros de prueba eliminados (orden, nota en cascada, equipo SN-FAC*, cliente V-99999999);
+  sin restos en la BD.
+- Frontend: lint 0 errores | vitest 13/13 | build production OK.
+- El backend temporal usado para las pruebas se detuvo: el puerto :3000 quedo libre para
+  correr "npm run dev" sin EADDRINUSE.
+
+---

@@ -6,6 +6,7 @@ import {
     ESTADO_ORDEN,
 } from "../utils/stateMachine.js";
 import { registrarAuditoria } from "../utils/auditoria.js";
+import { notificarOrdenes } from "../utils/realtime.js";
 
 export class OrdenController {
     static async getAll(req, res) {
@@ -66,6 +67,7 @@ export class OrdenController {
             detalles: `Se registró la orden ${resultado?.codigo_orden}`,
         });
 
+        notificarOrdenes();
         res.status(201).json(resultado)
     }
 
@@ -82,6 +84,7 @@ export class OrdenController {
         const id = req.params.id
         const data = req.body
         const orden = await OrdenModel.update(id, data)
+        notificarOrdenes();
         res.status(200).json(orden)
     }
 
@@ -163,6 +166,7 @@ export class OrdenController {
             });
         }
 
+        notificarOrdenes();
         res.status(200).json(orden)
     }
 
@@ -177,6 +181,7 @@ export class OrdenController {
             accion: 'Eliminación de Orden',
             detalles: `Se eliminó la orden ${resultado.codigo_orden}`,
         });
+        notificarOrdenes();
         res.status(200).json(resultado)
     }
 
@@ -206,6 +211,7 @@ export class OrdenController {
                 accion: 'Cotización Aprobada',
                 detalles: `El cliente aprobó la cotización de la orden ${ordenActual.codigo_orden} (pasa a proceso técnico)`,
             });
+            notificarOrdenes();
             return res.status(200).json(resultado)
         } else {
             // Cliente rechazo -> se cancela la orden
@@ -218,6 +224,7 @@ export class OrdenController {
                 accion: 'Cotización Rechazada',
                 detalles: `El cliente rechazó la cotización de la orden ${ordenActual.codigo_orden} (se cancela)`,
             });
+            notificarOrdenes();
             return res.status(200).json(resultado)
         }
     }
@@ -245,6 +252,7 @@ export class OrdenController {
             accion: 'Cambio de Técnico',
             detalles: `Orden ${ordenActual.codigo_orden}: técnico id=${id_tecnico} (motivo: ${motivo})`,
         });
+        notificarOrdenes();
         res.status(200).json(resultado)
     }
 
@@ -272,6 +280,7 @@ export class OrdenController {
             accion: 'Registro de Factura',
             detalles: `Factura ${numero_factura} registrada en la orden ${ordenActual.codigo_orden}`,
         });
+        notificarOrdenes();
         res.status(200).json(resultado)
     }
 

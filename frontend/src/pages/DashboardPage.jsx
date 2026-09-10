@@ -15,14 +15,23 @@ import { MetricCard, Card } from '../components/common/Card';
 import Table from '../components/common/Table';
 import Button from '../components/common/Button';
 import StatusBadge from '../components/common/StatusBadge';
+import Toast from '../components/common/Toast';
 import OrdenDetalleModal from '../components/modals/OrdenDetalleModal';
 import { listOrdenes } from '../api/ordenes';
+import { useOrdenesRealtime } from '../api/realtime';
 
 const DashboardPage = ({ onOpenNewOrderModal }) => {
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [selectedOrden, setSelectedOrden] = useState(null);
+
+    // Aviso flotante (toast) para cotizacion/entrega
+    const [toast, setToast] = useState(null);
+    const showToast = (message) => {
+        setToast(message);
+        window.setTimeout(() => setToast(null), 4000);
+    };
 
     useEffect(() => {
         let cancel = false;
@@ -55,6 +64,13 @@ const DashboardPage = ({ onOpenNewOrderModal }) => {
             })
             .finally(() => setLoading(false));
     };
+
+    // recarga silenciosa en tiempo real (WebSocket): no toca loading ni cierra la vista
+    useOrdenesRealtime(() => {
+        listOrdenes()
+            .then((data) => setOrdenes(data))
+            .catch((err) => console.error('Error refrescando dashboard en tiempo real:', err));
+    }, []);
 
     const kpis = useMemo(() => {
         const counts = {
@@ -154,7 +170,11 @@ const DashboardPage = ({ onOpenNewOrderModal }) => {
                 isOpen={!!selectedOrden}
                 onClose={() => setSelectedOrden(null)}
                 order={selectedOrden}
+                onUpdateOrder={reload}
+                onNotify={showToast}
             />
+
+            <Toast message={toast} onDismiss={() => setToast(null)} />
         </div>
     );
 };

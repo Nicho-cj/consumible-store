@@ -19,6 +19,17 @@ describe('Utilidades de Texto (text.js)', () => {
         it('normaliza y colapsa espacios dobles', () => {
             expect(sanitizeForApi('  Mantenimiento   Preventivo  ')).toBe('mantenimiento preventivo');
         });
+
+        it('elimina comas adicionales o separadores de texto', () => {
+            expect(sanitizeForApi('Impresión, láser, color')).toBe('impresion laser color');
+            expect(sanitizeForApi('Jesús, Antonio Pérez')).toBe('jesus antonio perez');
+        });
+
+        it('maneja valores no string de forma segura', () => {
+            expect(sanitizeForApi(null)).toBe(null);
+            expect(sanitizeForApi(undefined)).toBe('');
+            expect(sanitizeForApi(12345)).toBe(12345);
+        });
     });
 
     describe('sanitizePayload', () => {

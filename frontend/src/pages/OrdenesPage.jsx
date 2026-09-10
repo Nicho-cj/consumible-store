@@ -5,10 +5,12 @@ import Table from '../components/common/Table';
 import Button from '../components/common/Button';
 import StatusBadge from '../components/common/StatusBadge';
 import FilterBar from '../components/common/FilterBar';
+import Toast from '../components/common/Toast';
 import OrdenDetalleModal from '../components/modals/OrdenDetalleModal';
 import { normalizeText } from '../utils/text';
 import { ORDER_STATUS } from '../utils/status';
 import { listOrdenes } from '../api/ordenes';
+import { useOrdenesRealtime } from '../api/realtime';
 
 const TAB_STATUS_MAP = {
     EN_PROCESO: [
@@ -28,6 +30,24 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
     const [error, setError] = useState('');
     const [selectedOrden, setSelectedOrden] = useState(null);
     const [activeTab, setActiveTab] = useState('EN_PROCESO');
+
+    // Aviso flotante (toast) para cotizacion/entrega
+    const [toast, setToast] = useState(null);
+    const showToast = (message) => {
+        setToast(message);
+        window.setTimeout(() => setToast(null), 4000);
+    };
+
+    // recarga silenciosa: no toca loading para no perturbar filtros/tabs abiertos
+    const refreshSilencioso = () => {
+        listOrdenes()
+            .then((data) => {
+                setOrdenes(data);
+                setError('');
+            })
+            .catch((err) => console.error('Error refrescando órdenes en tiempo real:', err));
+    };
+    useOrdenesRealtime(refreshSilencioso, []);
 
     useEffect(() => {
         let cancel = false;
@@ -191,7 +211,10 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                 onClose={() => setSelectedOrden(null)}
                 order={selectedOrden}
                 onUpdateOrder={handleUpdateOrder}
+                onNotify={showToast}
             />
+
+            <Toast message={toast} onDismiss={() => setToast(null)} />
         </div>
     );
 };

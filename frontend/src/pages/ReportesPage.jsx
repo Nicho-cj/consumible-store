@@ -21,6 +21,7 @@ import Table from '../components/common/Table';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import FilterBar from '../components/common/FilterBar';
+import StatusBadge from '../components/common/StatusBadge';
 import { normalizeText } from '../utils/text';
 import { reporteServicios, listAuditoria, descargarBackup } from '../api/reportes';
 import { listTecnicosPublicos } from '../api/entidades';
@@ -222,6 +223,7 @@ const ReportesPage = () => {
         repuestosUsados: 'Ninguno',
         fechaIngreso: r.fecha_ingreso ? r.fecha_ingreso.slice(0, 10) : '',
         montoTotal: Number(r.monto_cobro) || 0,
+        estado: r.estado,
     }));
 
     const filterFields = [
@@ -405,6 +407,11 @@ const ReportesPage = () => {
             label: 'Fecha Ingreso',
             className: 'text-slate-600 font-mono text-xs whitespace-nowrap',
             render: (row) => formatDate(row.fechaIngreso),
+        },
+        {
+            key: 'estado',
+            label: 'Estado',
+            render: (row) => <StatusBadge status={row.estado} />,
         },
         {
             key: 'montoTotal',
