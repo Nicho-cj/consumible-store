@@ -469,7 +469,7 @@ const ReportesPage = () => {
                 <div>
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <FileSpreadsheet className="text-[#97C719]" size={24} />
-                        Liquidación y Reportes de Servicios
+                        Pagos y Reportes de Servicios
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">Reporte de servicios finalizados por fecha de ingreso para liquidación y respaldo operativo</p>
                 </div>
@@ -491,7 +491,7 @@ const ReportesPage = () => {
             <div className="flex border-b border-slate-200 gap-6">
                 <button onClick={() => setActiveTab('LIQUIDACION')} className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'LIQUIDACION' ? 'border-[#97C719] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                     <DollarSign size={16} className={activeTab === 'LIQUIDACION' ? 'text-[#97C719]' : 'text-slate-400'} />
-                    <span>Detalle de Servicios para Liquidación</span>
+                    <span>Detalle de Servicios para Pagos</span>
                 </button>
                 <button onClick={() => setActiveTab('LOGS')} className={`pb-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'LOGS' ? 'border-[#97C719] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                     <Activity size={16} className={activeTab === 'LOGS' ? 'text-[#97C719]' : 'text-slate-400'} />
