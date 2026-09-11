@@ -45,6 +45,14 @@ export async function patchOrden(id, data) {
     return normalizeOrden(await apiFetch(`/ordenes/${id}`, { method: 'PATCH', body: data }));
 }
 
+// PATCH /ordenes/:id/cambiar-tecnico { id_tecnico, motivo } -> FASE 11 (reasignar técnico)
+export async function cambiarTecnicoOrden(id, idTecnico, motivo) {
+    return normalizeOrden(await apiFetch(`/ordenes/${id}/cambiar-tecnico`, {
+        method: 'PATCH',
+        body: { id_tecnico: idTecnico, motivo },
+    }));
+}
+
 // PATCH /ordenes/:id/cotizacion { aprobada: true|false } -> RF-07
 export async function responderCotizacion(id, aprobada) {
     return normalizeOrden(await apiFetch(`/ordenes/${id}/cotizacion`, {

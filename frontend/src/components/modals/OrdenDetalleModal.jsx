@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, Hash } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, Hash, UserCheck } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
 import { ORDER_STATUS, STATUS_FLOW, STATUS_CONFIG } from '../../utils/status';
-import { responderCotizacion, patchOrden } from '../../api/ordenes';
+import { cambiarTecnicoOrden, responderCotizacion, patchOrden } from '../../api/ordenes';
+import { listTecnicosPublicos } from '../../api/entidades';
 
 const FlowProgress = ({ currentStatus }) => {
     const currentIdx = STATUS_FLOW.indexOf(currentStatus);
@@ -21,26 +22,23 @@ const FlowProgress = ({ currentStatus }) => {
                     <div key={status} className="flex items-center flex-1">
                         <div className="flex flex-col items-center flex-1">
                             <div
-                                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
-                                    isCompleted
+                                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${isCompleted
                                         ? 'bg-[#55720C] border-[#55720C] text-white'
                                         : isCurrent
                                             ? 'bg-white border-[#55720C] text-[#55720C] shadow-md'
                                             : 'bg-slate-100 border-slate-300 text-slate-400'
-                                }`}
+                                    }`}
                             >
                                 {isCompleted ? <CheckCircle2 size={14} /> : idx + 1}
                             </div>
-                            <span className={`text-[9px] font-semibold mt-1 text-center leading-tight ${
-                                isCurrent ? 'text-[#55720C]' : isCompleted ? 'text-slate-600' : 'text-slate-400'
-                            }`}>
+                            <span className={`text-[9px] font-semibold mt-1 text-center leading-tight ${isCurrent ? 'text-[#55720C]' : isCompleted ? 'text-slate-600' : 'text-slate-400'
+                                }`}>
                                 {config?.label || status}
                             </span>
                         </div>
                         {idx < STATUS_FLOW.length - 1 && (
-                            <div className={`h-0.5 w-full mx-1 rounded ${
-                                idx < currentIdx ? 'bg-[#55720C]' : 'bg-slate-200'
-                            }`} />
+                            <div className={`h-0.5 w-full mx-1 rounded ${idx < currentIdx ? 'bg-[#55720C]' : 'bg-slate-200'
+                                }`} />
                         )}
                     </div>
                 );
@@ -68,9 +66,43 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
     const [closeError, setCloseError] = useState('');
     const [saving, setSaving] = useState(false);
 
+    // FASE 11: reasignación de técnico + justificación al cierre
+    const [tecnicos, setTecnicos] = useState([]);
+    const [showReassign, setShowReassign] = useState(false);
+    const [reassignIdTecnico, setReassignIdTecnico] = useState('');
+    const [reassignMotivo, setReassignMotivo] = useState('');
+    const [reassignError, setReassignError] = useState('');
+    const [savingReassign, setSavingReassign] = useState(false);
+    // FASE 11: justificación al cierre (lazy-init; el modal se remonta por orden vía key del padre)
+    const [justificacionTexto, setJustificacionTexto] = useState(() => order?.motivoCambioTecnico || '');
+    const [justificacionTecnicoId, setJustificacionTecnicoId] = useState(() => (order?.tecnicoId ? String(order.tecnicoId) : ''));
+    const [savingJustificacion, setSavingJustificacion] = useState(false);
+
+    // Cargar el catálogo de técnicos activos para el selector (sin login)
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancel = false;
+        listTecnicosPublicos()
+            .then((data) => { if (!cancel) setTecnicos(data); })
+            .catch(() => { /* el catálogo es best-effort para el selector */ });
+        return () => { cancel = true; };
+    }, [isOpen]);
+
+    // Al cambiar de orden, el modal se remonta (key en la página) y reinicia su estado por lazy-init.
+
     if (!order) return null;
 
     const currentStatus = order.estado || ORDER_STATUS.REGISTRADO;
+
+    // FASE 11: reasignación durante el flujo activo, justificación al cierre
+    const esReasignable = [
+        ORDER_STATUS.REGISTRADO,
+        ORDER_STATUS.EN_DIAGNOSTICO,
+        ORDER_STATUS.SOLUCION_COTIZACION,
+        ORDER_STATUS.PROCESO_TECNICO,
+        ORDER_STATUS.LISTO_ENTREGA,
+    ].includes(currentStatus);
+    const esCerrado = currentStatus === ORDER_STATUS.ENTREGADO || currentStatus === ORDER_STATUS.CANCELADO;
 
     // FASE 5-1: respuestas de cotizacion reales via PATCH /ordenes/:id/cotizacion (RF-07)
     const handleApprove = async () => {
@@ -150,6 +182,57 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
             setCloseError(err.message);
         } finally {
             setSaving(false);
+        }
+    };
+
+    // FASE 11: reasignar técnico (endpoint existente /cambiar-tecnico)
+    const handleReassign = async () => {
+        const techId = parseInt(reassignIdTecnico, 10);
+        const motivo = reassignMotivo.trim();
+        if (!techId) {
+            setReassignError('Selecciona el técnico al que se reasigna la orden.');
+            return;
+        }
+        if (!motivo) {
+            setReassignError('Indica el motivo del traspaso.');
+            return;
+        }
+        if (savingReassign) return;
+        setReassignError('');
+        setSavingReassign(true);
+        try {
+            const updated = await cambiarTecnicoOrden(order.id, techId, motivo);
+            onUpdateOrder?.(updated);
+            setShowReassign(false);
+            setReassignMotivo('');
+            onNotify?.(`Orden reasignada. Técnico actual: ${updated.tecnicoAsignado}.`);
+        } catch (err) {
+            setReassignError(err.message);
+        } finally {
+            setSavingReassign(false);
+        }
+    };
+
+    // FASE 11: justificación del cambio al cierre (PATCH general ya soporta motivo_cambio_tecnico)
+    const handleSaveJustificacion = async () => {
+        if (savingJustificacion) return;
+        const justificacion = justificacionTexto.trim();
+        if (!justificacion) {
+            onNotify?.('Escribe la justificación antes de guardar.', 'error');
+            return;
+        }
+        setSavingJustificacion(true);
+        try {
+            const payload = { motivo_cambio_tecnico: justificacion };
+            const techIdFinal = parseInt(justificacionTecnicoId, 10);
+            if (techIdFinal && techIdFinal !== order.tecnicoId) payload.id_tecnico = techIdFinal;
+            const updated = await patchOrden(order.id, payload);
+            onUpdateOrder?.(updated);
+            onNotify?.('Justificación del cambio de técnico guardada.');
+        } catch (err) {
+            onNotify?.(`Error al guardar: ${err.message}`, 'error');
+        } finally {
+            setSavingJustificacion(false);
         }
     };
 
@@ -290,6 +373,98 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
                     )}
                 </div>
 
+                {order.motivoCambioTecnico && (
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                        <UserCheck size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <span className="text-amber-800 font-bold block">Cambio de Técnico</span>
+                            <span className="text-slate-700">{order.motivoCambioTecnico}</span>
+                        </div>
+                    </div>
+                )}
+
+                {esReasignable && !showReassign && (
+                    <div className="flex justify-end">
+                        <Button variant="secondary" size="sm" icon={UserCheck} onClick={() => setShowReassign(true)}>
+                            Reasignar Técnico
+                        </Button>
+                    </div>
+                )}
+
+                {esReasignable && showReassign && (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-slate-700">Reasignar Técnico</p>
+                        <div className="space-y-2">
+                            <div>
+                                <label className="text-xs font-semibold text-slate-600 block mb-1">Nuevo Técnico</label>
+                                <select
+                                    value={reassignIdTecnico}
+                                    onChange={(e) => { setReassignIdTecnico(e.target.value); setReassignError(''); }}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none bg-white"
+                                >
+                                    <option value="">— Seleccionar —</option>
+                                    {tecnicos.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-600 block mb-1">Motivo del Traspaso</label>
+                                <textarea
+                                    rows={3}
+                                    value={reassignMotivo}
+                                    onChange={(e) => { setReassignMotivo(e.target.value); setReassignError(''); }}
+                                    placeholder="Ej. No logró hallar la solución a la falla, se pasa a otro técnico."
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                                />
+                            </div>
+                            {reassignError && (
+                                <p className="text-xs text-red-600 font-medium bg-red-50 border border-red-200 rounded px-3 py-2">{reassignError}</p>
+                            )}
+                            <div className="flex justify-end gap-2">
+                                <Button variant="secondary" size="sm" onClick={() => setShowReassign(false)}>Cancelar</Button>
+                                <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleReassign} disabled={savingReassign}>
+                                    {savingReassign ? 'Reasignando...' : 'Confirmar Reasignación'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {esCerrado && (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-slate-700">Justificación del cambio de técnico</p>
+                        <p className="text-[11px] text-slate-500">
+                            Registra aquí el motivo por el que esta orden pasó por uno o varios técnicos antes del cierre.
+                        </p>
+                        <textarea
+                            rows={3}
+                            value={justificacionTexto}
+                            onChange={(e) => setJustificacionTexto(e.target.value)}
+                            placeholder="Ej. El primer técnico no logró identificar la falla; se reasignó a otro técnico que resolvió el problema."
+                            className="w-full text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                        />
+                        <div>
+                            <label className="text-xs font-semibold text-slate-600 block mb-1">Corregir técnico final (opcional)</label>
+                            <select
+                                value={justificacionTecnicoId}
+                                onChange={(e) => setJustificacionTecnicoId(e.target.value)}
+                                className="w-full text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none bg-white"
+                            >
+                                <option value="">— Sin cambio —</option>
+                                {tecnicos.map((t) => (
+                                    <option key={t.id} value={t.id}>{t.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex justify-end">
+                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleSaveJustificacion} disabled={savingJustificacion}>
+                                {savingJustificacion ? 'Guardando...' : 'Guardar Justificación'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {currentStatus === ORDER_STATUS.SOLUCION_COTIZACION && (
                     <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg space-y-3">
                         <p className="text-xs font-bold text-amber-800">
@@ -309,7 +484,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
                 {currentStatus === ORDER_STATUS.LISTO_ENTREGA && !showCloseForm && (
                     <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg space-y-3">
                         <p className="text-xs font-bold text-emerald-800">
-                            El technician ha finalizado el trabajo. El equipo está listo para entregar al cliente.
+                            El tecnico ha finalizado el trabajo. El equipo está listo para entregar al cliente.
                         </p>
                         <Button variant="primary" size="sm" icon={PackageCheck} onClick={handleOpenCloseForm}>
                             Entregar Equipo al Cliente

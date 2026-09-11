@@ -545,3 +545,54 @@ al admin logueado y limitando al técnico a su estación.
   correr "npm run dev" sin EADDRINUSE.
 
 ---
+
+## FASE 11 — Reasignar técnico con justificación + consolidación init-db (COMPLETADA ✅)
+
+### 1. Reasignar técnico durante el flujo activo (sin tabla/backend nuevos)
+- Decision del usuario: NO se crea historial estructurado ni tabla nueva. Se reutilizo el
+  endpoint existente PATCH /ordenes/:id/cambiar-tecnico (controllers/ordenes.js:233) que ya
+  persiste `id_tecnico` + `motivo_cambio_tecnico`, y la columna `motivo_cambio_tecnico` (FASE 8).
+- api/ordenes.js:49: nueva funcion `cambiarTecnicoOrden(id, idTecnico, motivo)`.
+- OrdenDetalleModal.jsx: boton "Reasignar Técnico" (solo en estados activos: REGISTRADO,
+  EN_DIAGNOSTICO, SOLUCION_COTIZACION, PROCESO_TECNICO, LISTO_ENTREGA) que abre un form con
+  selector de tecnicos activos (GET /tecnicos/publicos, sin login) + "Motivo del Traspaso"
+  obligatorio. Al confirmar llama a cambiarTecnicoOrden y avisa con Toast "Orden reasignada".
+
+### 2. Justificación del cambio de técnico al cierre
+- En ordenes ENTREGADO/CANCELADO el modal muestra la seccion "Justificación del cambio de
+  técnico": textarea (precargado con el motivo actual) + selector "Corregir técnico final
+  (opcional)" que arranca en el tecnico asignado.
+- Al guardar hace PATCH /ordenes/:id general (whitelist ya acepta motivo_cambio_tecnico e
+  id_tecnico): solo incluye id_tecnico si se eligio uno distinto al asignado (el campo queda
+  "— Sin cambio —" por defecto).
+- Fix lint - FCC-11: el useEffect que sincronizaba justificacionTexto/justificacionTecnicoId con
+  el estado de la orden violaba react-hooks/set-state-in-effect. Se elimino el effect: ahora el
+  estado se inicializa "lazy" desde order y el modal se remonta por orden agregando
+  `key={selectedOrden?.id ?? 'sin-orden'}` en OrdenesPage.jsx y DashboardPage.jsx (misma
+  convencion que TecnicosOrdenesPage.jsx:306). De paso corrige estado fantasma latente que
+  quedaba del modal entre ordenes.
+
+### 3. Consolidación de init-db en un solo archivo
+- init-db/init.sql (NUEVO, 254 lineas): reemplaza los 8 scripts separados (01–08) que se
+  eliminaron. Incluye 8 tablas + datos semilla + GRANT TO admin, verificado en BD descartable
+  `db_init_check`. Ejecucion local de la BD dev: psql -U admin -d db -f init-db/init.sql.
+- La consolidacion no cambio el frontend; los tests de ReportesPage fallaban (4) por un cambio
+  de texto del usuario en ReportesPage.jsx (encabezado ahora "Pagos y Reportes de Servicios",
+  antes "Liquidación y Reportes de Servicios"). Se actualizaron las 4 aserciones del test a la
+  cadena actual; no era un bug de codigo.
+
+### Verificacion (FASE 11)
+- E2E completo contra la BD local (backend temporal arrancado y luego detenido, :3000 libre):
+  - POST /equipos (equipo E2E, cliente 8) + POST /ordenes (tecnico 1 Dario, ORD-2026-014/015).
+  - PATCH /ordenes/:id/cambiar-tecnico { id_tecnico: 2, motivo } -> persistido en GET.
+  - Flujo entraga completo: EN_DIAGNOSTICO -> SOLUCION_COTIZACION -> /cotizacion aprobada
+    (PROCESO_TECNICO) -> LISTO_ENTREGA -> ENTREGADO con contador_final y monto_cobro (nota con
+    PATCH /servicios por RN-04).
+  - Justificación al cierre con mismo tecnico: PATCH motivo_cambio_tecnico -> se actualiza,
+    tecnico se mantiene. Con tecnico distinto: PATCH { id_tecnico: 4, motivo } -> GET final
+    devuelve id_tecnico=4 (Eloy) + motivo persistido. Todo OK.
+  - Registros de prueba eliminados (orden + nota en cascada + equipo E2E): la BD dev quedo
+    solo con la orden real ORD-2026-001 id 13 (ENTREGADO, tecnico 1), nota id 11 y equipo id 11.
+  - Frontend: lint 0 errores (fix FCC-11 aplicado) | vitest 13/13 | build production OK.
+
+---

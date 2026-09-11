@@ -73,7 +73,7 @@ describe('Página ReportesPage - Detalle de Servicios para Liquidación', () => 
     it('renderiza las métricas y encabezados de los 7 campos requeridos', async () => {
         render(<ReportesPage />);
 
-        expect(await screen.findByText('Liquidación y Reportes de Servicios')).toBeInTheDocument();
+        expect(await screen.findByText('Pagos y Reportes de Servicios')).toBeInTheDocument();
 
         // Métricas (valores calculados desde el reporte real mockeado)
         expect(await screen.findByText('Total Monto Cobrado')).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe('Página ReportesPage - Detalle de Servicios para Liquidación', () => 
     it('abre el modal de Vista Previa al hacer clic en Vista Previa', async () => {
         render(<ReportesPage />);
 
-        await screen.findByText('Liquidación y Reportes de Servicios');
+        await screen.findByText('Pagos y Reportes de Servicios');
 
         const previewButton = screen.getByText('Vista Previa');
         fireEvent.click(previewButton);
@@ -111,19 +111,19 @@ describe('Página ReportesPage - Detalle de Servicios para Liquidación', () => 
     it('ejecuta la impresión del reporte sin romper la vista', async () => {
         render(<ReportesPage />);
 
-        await screen.findByText('Liquidación y Reportes de Servicios');
+        await screen.findByText('Pagos y Reportes de Servicios');
 
         const printButtons = screen.getAllByText('Imprimir / Guardar PDF');
         expect(printButtons.length).toBeGreaterThan(0);
         fireEvent.click(printButtons[0]);
 
-        expect(screen.getByText('Liquidación y Reportes de Servicios')).toBeInTheDocument();
+        expect(screen.getByText('Pagos y Reportes de Servicios')).toBeInTheDocument();
     });
 
     it('muestra los LOGS reales de /auditoria en el tab Historial', async () => {
         render(<ReportesPage />);
 
-        await screen.findByText('Liquidación y Reportes de Servicios');
+        await screen.findByText('Pagos y Reportes de Servicios');
 
         fireEvent.click(screen.getByText('Registro de Actividad y Auditoría'));
 

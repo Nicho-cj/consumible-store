@@ -167,6 +167,7 @@ const DashboardPage = ({ onOpenNewOrderModal }) => {
             )}
 
             <OrdenDetalleModal
+                key={selectedOrden?.id ?? 'sin-orden'}
                 isOpen={!!selectedOrden}
                 onClose={() => setSelectedOrden(null)}
                 order={selectedOrden}
