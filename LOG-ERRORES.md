@@ -637,6 +637,9 @@ al admin logueado y limitando al técnico a su estación.
 - TecnicoDiagnosticoModal.jsx: el input libre + "Cant." se reemplazan por un <select> del catalogo
   (se excluyen los ya agregados de la misma orden); se quitaron los chips "Cant:" (estados
   PROCESO_TECNICO y EN_DIAGNOSTICO).
+- OrdenDetalleModal.jsx ("Orden de Servicio"): ahora SI muestra "Repuestos Utilizados" (seccion que
+  existia pero nunca renderizaba porque normalizeOrden deja repuestosUsados en []). Se agrega un
+  useEffect que trae listRepuestos(order.id) y renderiza los nombres.
 
 ### Verificacion (FASE 12)
 - Backend: node --check OK en los 9 archivos tocados. Frontend: lint 0 errores | vitest 13/13 |

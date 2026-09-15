@@ -4,7 +4,7 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
 import { ORDER_STATUS, STATUS_FLOW, STATUS_CONFIG } from '../../utils/status';
-import { cambiarTecnicoOrden, responderCotizacion, patchOrden } from '../../api/ordenes';
+import { cambiarTecnicoOrden, responderCotizacion, patchOrden, listRepuestos } from '../../api/ordenes';
 import { listTecnicosPublicos } from '../../api/entidades';
 
 const FlowProgress = ({ currentStatus }) => {
@@ -77,6 +77,17 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
     const [justificacionTexto, setJustificacionTexto] = useState(() => order?.motivoCambioTecnico || '');
     const [justificacionTecnicoId, setJustificacionTecnicoId] = useState(() => (order?.tecnicoId ? String(order.tecnicoId) : ''));
     const [savingJustificacion, setSavingJustificacion] = useState(false);
+    // FASE 12: repuestos reales de la orden (normalizeOrden no los trae: repuestosUsados es [])
+    const [repuestos, setRepuestos] = useState([]);
+
+    useEffect(() => {
+        if (!order?.id) return;
+        let cancel = false;
+        listRepuestos(order.id)
+            .then((items) => { if (!cancel) setRepuestos(items || []); })
+            .catch((err) => { if (!cancel) console.error('Error cargando repuestos:', err); });
+        return () => { cancel = true; };
+    }, [order?.id]);
 
     // Cargar el catálogo de técnicos activos para el selector (sin login)
     useEffect(() => {
@@ -332,12 +343,12 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
                         </div>
                     )}
 
-                    {order.repuestosUsados && order.repuestosUsados.length > 0 && (
+                    {repuestos.length > 0 && (
                         <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                             <span className="text-purple-700 font-bold block mb-1">Repuestos Utilizados:</span>
                             <ul className="list-disc list-inside text-slate-700">
-                                {order.repuestosUsados.map((r, i) => (
-                                    <li key={i}>{r.nombre} {r.cantidad > 1 ? `(x${r.cantidad})` : ''}</li>
+                                {repuestos.map((r, i) => (
+                                    <li key={i}>{r.nombre}</li>
                                 ))}
                             </ul>
                         </div>
