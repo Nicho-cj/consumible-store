@@ -6,7 +6,7 @@ import { resolve } from 'path'
 // .env.local sobreescribe .env (permite config local sin tocar el .env del dev con Docker).
 // override: true necesario porque dotenv NO pisa variables ya presentes en process.env
 dotenvConfig({ path: resolve('.env') })
-dotenvConfig({ path: resolve('.env.local'), override: false })  //  Nicho: para que te funcione ponle true
+dotenvConfig({ path: resolve('.env.local'), override: true })  //  Nicho: para que te funcione ponle true
 
 // @REVISAR: se agrego parseInt al DB_PORT (antes pasaba un string) y manejo de error del pool
 const pool = new Pool({

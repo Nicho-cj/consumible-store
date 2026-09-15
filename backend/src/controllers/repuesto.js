@@ -24,7 +24,7 @@ export class DetalleRepuestoController {
           await registrarAuditoria(req, {
                modulo: 'Taller',
                accion: 'Registro de Repuesto',
-               detalles: `Repuesto "${data.nombre}" (${data.cantidad}) en la orden id=${data.id_orden}`,
+               detalles: `Repuesto "${resultado?.nombre || data.id_repuesto}" en la orden id=${data.id_orden}`,
           });
           notificarOrdenes();
           res.status(201).json(resultado)

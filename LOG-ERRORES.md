@@ -596,3 +596,58 @@ al admin logueado y limitando al técnico a su estación.
   - Frontend: lint 0 errores (fix FCC-11 aplicado) | vitest 13/13 | build production OK.
 
 ---
+
+## FASE 12 — Catálogo de repuestos (tabla independiente, solo nombres) (COMPLETADA ✅)
+
+### 1. Contexto y decisión del usuario
+- Antes los repuestos se guardaban en `detalle_repuesto` como texto libre (nombre + descripcion +
+  cantidad) ligado a la orden. Ahora el repuesto se elige de un CATALOGO independiente.
+- Decisiones: (a) el catalogo solo tiene NOMBRES (sin stock/cantidades, sin FK a ordenes/clientes/
+  equipos); (b) la asignacion a la orden queda SOLO con `id_repuesto` + `id_orden` (se eliminan
+  nombre/descripcion/cantidad); (c) el tecnico SOLO selecciona del catalogo (no crea nombres); (d)
+  los 212 nombres del Excel se conservan cargados en la BD dev.
+
+### 2. BD
+- 01-init-tables.sql: nueva tabla 7 `repuesto (id_repuesto SERIAL PK, nombre VARCHAR(80) NOT NULL
+  UNIQUE)` y `detalle_repuesto` (tabla 8) pasa a `id_repuesto FK -> repuesto`, `id_orden FK ->
+  orden_servicio`, con UNIQUE(id_repuesto, id_orden). FK de repuesto con ON DELETE RESTRICT.
+- 03-catalogo-repuestos.sql (NUEVO): export de `Repuestos al 14-09-26.xls` (hoja Report, fila 6
+  encabezado "Codigo|Descripcion", filas 7-269) -> 212 nombres unicos, INSERT ... ON CONFLICT
+  (nombre) DO NOTHING. Docker lo ejecuta tras 01 y 02.
+- Migración aplicada a la BD dev: DROP detalle_repuesto (estaba vacia) + CREATE repuesto y
+  detalle_repuesto nuevos + carga de los 212. Orden real id 13 intacta.
+
+### 3. Backend
+- models/repuestoCatalogo.js (NUEVO) RepuestoModel: getAll, getById, findByNombre, create (ON
+  CONFLICT DO NOTHING -> creado o existente). controllers/repuestoCatalogo.js (NUEVO) + schemas/
+  repuestoSchema.js (NUEVO, solo { nombre }).
+- routes/repuesto.js: `GET/POST /repuestos/catalogo` registradas ANTES de route("/:id") (si no,
+  /catalogo lo absorbe el param). Sin cambios en app.js.
+- models/repuesto.js: DetalleRepuestoModel con JOIN repuesto (devuelve id_repuesto + nombre),
+  create(id_repuesto, id_orden) idempotente ante UNIQUE (devuelve el existente, sin 500),
+  allowlist de patch ahora id_repuesto/id_orden.
+- models/orden.js getRepuestos: JOIN con repuesto para traer nombre.
+
+### 4. Frontend
+- api/ordenes.js: nueva `listRepuestosCatalogo()`; `crearRepuesto` ahora manda { id_orden,
+  id_repuesto }; syncRepuestos conserva la logica prev/nuevo (removidos por id_detalle, creados
+  por id_repuesto).
+- api/mappers.js normalizeRepuesto: { id (id_detalle), id_repuesto, nombre } (sin descripcion ni
+  cantidad).
+- TecnicoDiagnosticoModal.jsx: el input libre + "Cant." se reemplazan por un <select> del catalogo
+  (se excluyen los ya agregados de la misma orden); se quitaron los chips "Cant:" (estados
+  PROCESO_TECNICO y EN_DIAGNOSTICO).
+
+### Verificacion (FASE 12)
+- Backend: node --check OK en los 9 archivos tocados. Frontend: lint 0 errores | vitest 13/13 |
+  build production OK.
+- E2E API contra BD local (backend temporal, detenido al final):
+  1) POST /repuestos/catalogo -> 201 id 213 "BUJE PRUEBA E2E F12".
+  2) POST duplicado -> mismo id (idempotente).
+  3) POST /repuestos { id_repuesto 213, id_orden 13 } -> id_detalle 1 con nombre del catalogo.
+  4) GET /repuestos/orden/13 y GET /ordenes/13/repuestos -> incluyen el detalle con nombre.
+  5) POST duplicado en la orden -> mismo id_detalle (sin 500).
+  6) DELETE /repuestos/1 OK; cleanup SQL borro detalle y el repuesto de prueba -> catalogo queda con 212.
+- El catalogo de 212 nombres del Excel QUEDA cargado en la BD dev (decision del usuario).
+
+---

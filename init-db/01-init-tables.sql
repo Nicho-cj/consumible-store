@@ -99,16 +99,28 @@ CREATE TABLE nota_servicio (
         ON DELETE CASCADE
 );
 
--- 7. Tabla: detalle_repuesto (con ON DELETE CASCADE en fk_repuesto_orden)
+-- 7. Tabla: repuesto (CATALOGO independiente, solo nombres, sin stock/cantidades).
+-- No depende de ordenes, clientes ni equipos.
+CREATE TABLE repuesto (
+    id_repuesto SERIAL PRIMARY KEY,
+    nombre      VARCHAR(80) NOT NULL UNIQUE
+);
+
+-- 8. Tabla: detalle_repuesto (asignacion de repuestos del catalogo a una ORDEN).
+-- Sin cantidad ni descripcion: solo se registra que repuesto se utilizo.
 CREATE TABLE detalle_repuesto (
     id_detalle  SERIAL PRIMARY KEY,
-    nombre      VARCHAR(50) NOT NULL,
-    descripcion VARCHAR(100) NOT NULL,
-    cantidad    INTEGER NOT NULL DEFAULT 1,
+    id_repuesto INTEGER NOT NULL,
     id_orden    INTEGER NOT NULL,
 
-    CONSTRAINT chk_cantidad_positiva
-        CHECK (cantidad > 0),
+    CONSTRAINT uq_detalle_repuesto_orden
+        UNIQUE (id_repuesto, id_orden),
+
+    CONSTRAINT fk_detalle_repuesto
+        FOREIGN KEY (id_repuesto)
+        REFERENCES repuesto (id_repuesto)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
 
     CONSTRAINT fk_repuesto_orden
         FOREIGN KEY (id_orden)
@@ -117,7 +129,7 @@ CREATE TABLE detalle_repuesto (
         ON DELETE CASCADE
 );
 
--- 8. Tabla: log_auditoria
+-- 9. Tabla: log_auditoria
 CREATE TABLE log_auditoria (
     id_log      SERIAL PRIMARY KEY,
     fecha       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -128,6 +140,6 @@ CREATE TABLE log_auditoria (
     detalles    TEXT
 );
 
--- 9. Permisos
+-- 10. Permisos
 GRANT ALL PRIVILEGES ON TABLE log_auditoria TO admin;
 GRANT ALL PRIVILEGES ON SEQUENCE log_auditoria_id_log_seq TO admin;

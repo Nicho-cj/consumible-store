@@ -150,7 +150,13 @@ export class OrdenModel {
 
     // @REVISAR: typo corregido - era getRespuestos, ahora getRepuestos
     static async getRepuestos(id_orden) {
-        const result = await query('SELECT * FROM detalle_repuesto WHERE id_orden = $1', [id_orden])
+        const result = await query(
+            `SELECT dr.id_detalle, dr.id_repuesto, dr.id_orden, r.nombre
+             FROM detalle_repuesto dr
+             JOIN repuesto r ON r.id_repuesto = dr.id_repuesto
+             WHERE dr.id_orden = $1`,
+            [id_orden]
+        )
         return result.rows;
     }
 
