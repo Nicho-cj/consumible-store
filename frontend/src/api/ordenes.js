@@ -98,16 +98,22 @@ export async function saveNota(idOrden, data) {
     }
 }
 
+// Catalogo de repuestos (tabla independiente, solo nombres)
+export async function listRepuestosCatalogo() {
+    const data = await apiFetch('/repuestos/catalogo');
+    return (Array.isArray(data) ? data : []).map((r) => ({ id: r.id_repuesto, nombre: r.nombre }));
+}
+
 // Repuestos (detalle_repuesto)
 export async function listRepuestos(idOrden) {
     const data = await apiFetch(`/repuestos/orden/${idOrden}`);
     return (Array.isArray(data) ? data : []).map(normalizeRepuesto);
 }
 
-export async function crearRepuesto({ idOrden, nombre, cantidad, descripcion }) {
+export async function crearRepuesto({ idOrden, idRepuesto }) {
     const data = await apiFetch('/repuestos', {
         method: 'POST',
-        body: { id_orden: idOrden, nombre, cantidad, descripcion: descripcion || nombre },
+        body: { id_orden: idOrden, id_repuesto: idRepuesto },
     });
     return normalizeRepuesto(data);
 }
@@ -128,6 +134,6 @@ export async function syncRepuestos(idOrden, prev = [], next = []) {
         try { await eliminarRepuesto(id); } catch { /* best effort */ }
     }
     for (const r of creados) {
-        try { await crearRepuesto({ idOrden, nombre: r.nombre, cantidad: r.cantidad || 1 }); } catch { /* best effort */ }
+        try { await crearRepuesto({ idOrden, idRepuesto: r.id_repuesto }); } catch { /* best effort */ }
     }
 }

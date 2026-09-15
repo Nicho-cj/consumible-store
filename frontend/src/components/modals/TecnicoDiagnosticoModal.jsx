@@ -3,7 +3,7 @@ import { Wrench, CheckCircle, Plus, Trash2, X, Lock, PackageCheck, PlayCircle } 
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
 import { ORDER_STATUS, STATUS_CONFIG } from '../../utils/status';
-import { listRepuestos, patchOrden, saveNota, syncRepuestos } from '../../api/ordenes';
+import { listRepuestos, listRepuestosCatalogo, patchOrden, saveNota, syncRepuestos } from '../../api/ordenes';
 
 const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
     // La pagina monta este modal con key={order.id}: al cambiar de orden se remonta
@@ -11,8 +11,8 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
     const [diagnostico, setDiagnostico] = useState(() => order?.diagnostico || '');
     const [repuestosUtilizados, setRepuestosUtilizados] = useState(() => order?.repuestosUsados || []);
     const [repuestosPrevios, setRepuestosPrevios] = useState(() => order?.repuestosUsados || []);
-    const [nuevoRepuestoNombre, setNuevoRepuestoNombre] = useState('');
-    const [nuevoRepuestoCantidad, setNuevoRepuestoCantidad] = useState(1);
+    const [catalogo, setCatalogo] = useState([]);
+    const [nuevoRepuestoId, setNuevoRepuestoId] = useState('');
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
 
@@ -23,13 +23,22 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
         listRepuestos(order.id)
             .then((repuestos) => {
                 if (cancel) return;
-                const mapeados = repuestos.map((r) => ({ id: r.id, nombre: r.nombre, cantidad: r.cantidad }));
+                const mapeados = repuestos.map((r) => ({ id: r.id, id_repuesto: r.id_repuesto, nombre: r.nombre }));
                 setRepuestosPrevios(mapeados);
                 setRepuestosUtilizados(mapeados);
             })
             .catch((err) => console.error('Error cargando repuestos:', err));
         return () => { cancel = true; };
     }, [order?.id]);
+
+    // FASE 12: catalogo de repuestos (solo nombres, seleccion desde el catalogo)
+    useEffect(() => {
+        let cancel = false;
+        listRepuestosCatalogo()
+            .then((items) => { if (!cancel) setCatalogo(items); })
+            .catch((err) => console.error('Error cargando catalogo de repuestos:', err));
+        return () => { cancel = true; };
+    }, []);
 
     if (!isOpen || !order) return null;
 
@@ -49,15 +58,15 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
 
     const handleAddRepuesto = (e) => {
         e.preventDefault();
-        if (!esEditable || !nuevoRepuestoNombre.trim()) return;
-        const cantNum = parseInt(nuevoRepuestoCantidad, 10) || 1;
+        if (!esEditable || !nuevoRepuestoId) return;
+        const item = catalogo.find((c) => String(c.id) === String(nuevoRepuestoId));
+        if (!item) return;
         setRepuestosUtilizados([
             ...repuestosUtilizados,
             // id temporal string -> se crea en BD al guardar (los id numericos ya estan persistidos)
-            { id: `temp-${Date.now()}`, nombre: nuevoRepuestoNombre.trim(), cantidad: cantNum },
+            { id: `temp-${Date.now()}`, id_repuesto: item.id, nombre: item.nombre },
         ]);
-        setNuevoRepuestoNombre('');
-        setNuevoRepuestoCantidad(1);
+        setNuevoRepuestoId('');
     };
 
     const handleRemoveRepuesto = (id) => {
@@ -247,22 +256,19 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
                             </div>
 
                             <form onSubmit={handleAddRepuesto} className="flex gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Repuesto o pieza utilizada"
-                                    value={nuevoRepuestoNombre}
-                                    onChange={(e) => setNuevoRepuestoNombre(e.target.value)}
+                                <select
+                                    value={nuevoRepuestoId}
+                                    onChange={(e) => setNuevoRepuestoId(e.target.value)}
                                     className="flex-1 text-xs p-2 border border-slate-300 rounded-md"
-                                />
-                                <input
-                                    type="number"
-                                    min="1"
-                                    placeholder="Cant."
-                                    value={nuevoRepuestoCantidad}
-                                    onChange={(e) => setNuevoRepuestoCantidad(e.target.value)}
-                                    className="w-20 text-xs p-2 text-center border border-slate-300 rounded-md"
-                                />
-                                <Button type="submit" size="sm" variant="secondary" icon={Plus}>
+                                >
+                                    <option value="">Selecciona un repuesto del catálogo...</option>
+                                    {catalogo
+                                        .filter((c) => !repuestosUtilizados.some((r) => String(r.id_repuesto) === String(c.id)))
+                                        .map((c) => (
+                                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                                        ))}
+                                </select>
+                                <Button type="submit" size="sm" variant="secondary" icon={Plus} disabled={!nuevoRepuestoId}>
                                     Agregar
                                 </Button>
                             </form>
@@ -279,18 +285,13 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
                                                 <span className="text-slate-700 font-medium">
                                                     {item.nombre}
                                                 </span>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-semibold text-[11px]">
-                                                        Cant: {item.cantidad || 1}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveRepuesto(item.id)}
-                                                        className="text-red-500 hover:text-red-700 transition-colors"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveRepuesto(item.id)}
+                                                    className="text-red-500 hover:text-red-700 transition-colors"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
                                             </li>
                                         ))}
                                     </ul>
@@ -309,9 +310,6 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
                                 {repuestosUtilizados.map((item, index) => (
                                     <li key={item.id || index} className="flex justify-between items-center px-3 py-2 text-xs">
                                         <span className="text-slate-700 font-medium">{item.nombre}</span>
-                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-semibold text-[11px]">
-                                            Cant: {item.cantidad || 1}
-                                        </span>
                                     </li>
                                 ))}
                             </ul>

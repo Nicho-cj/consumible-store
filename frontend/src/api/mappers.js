@@ -170,8 +170,7 @@ export function normalizeRepuesto(raw) {
     if (!raw) return null;
     return {
         id: raw.id_detalle,
+        id_repuesto: raw.id_repuesto,
         nombre: raw.nombre,
-        descripcion: raw.descripcion || '',
-        cantidad: raw.cantidad,
     };
 }
