@@ -94,13 +94,14 @@ const ReportContent = ({
                     <th className="p-1.5 border border-slate-800">Equipo y Serial</th>
                     <th className="p-1.5 border border-slate-800">Trabajo Realizado</th>
                     <th className="p-1.5 border border-slate-800 text-center w-24">Fecha Ingreso</th>
+                    <th className="p-1.5 border border-slate-800 text-center w-28">N° Factura</th>
                     <th className="p-1.5 border border-slate-800 text-right w-24">Monto Cobrado</th>
                 </tr>
             </thead>
             <tbody>
                 {rows.length === 0 ? (
                     <tr>
-                        <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
+                        <td colSpan="8" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
                     </tr>
                 ) : (
                     rows.map((row, idx) => (
@@ -119,6 +120,7 @@ const ReportContent = ({
                                 )}
                             </td>
                             <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
+                            <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-800">{row.numeroFactura || '—'}</td>
                             <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
                         </tr>
                     ))
@@ -126,7 +128,7 @@ const ReportContent = ({
             </tbody>
             <tfoot>
                 <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold">
-                    <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General Cobrado ({rows.length} Servicios):</td>
+                    <td colSpan="7" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General Cobrado ({rows.length} Servicios):</td>
                     <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">${total.toFixed(2)}</td>
                 </tr>
             </tfoot>
@@ -222,6 +224,7 @@ const ReportesPage = () => {
         trabajoRealizado: r.trabajo_realizado || r.diagnostico_falla || '-',
         repuestosUsados: 'Ninguno',
         fechaIngreso: r.fecha_ingreso ? r.fecha_ingreso.slice(0, 10) : '',
+        numeroFactura: r.numero_factura ?? '',
         montoTotal: Number(r.monto_cobro) || 0,
         estado: r.estado,
     }));
@@ -412,6 +415,16 @@ const ReportesPage = () => {
             key: 'estado',
             label: 'Estado',
             render: (row) => <StatusBadge status={row.estado} />,
+        },
+        {
+            key: 'numeroFactura',
+            label: 'N° Factura',
+            className: 'font-mono text-xs text-slate-700 text-center',
+            render: (row) => (
+                <span className={row.numeroFactura ? 'font-mono' : 'text-slate-400'}>
+                    {row.numeroFactura || '—'}
+                </span>
+            ),
         },
         {
             key: 'montoTotal',

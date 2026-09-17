@@ -4,7 +4,7 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
 import { ORDER_STATUS, STATUS_FLOW, STATUS_CONFIG } from '../../utils/status';
-import { cambiarTecnicoOrden, responderCotizacion, patchOrden, listRepuestos } from '../../api/ordenes';
+import { cambiarTecnicoOrden, responderCotizacion, patchOrden, listRepuestos, registrarFactura } from '../../api/ordenes';
 import { listTecnicosPublicos } from '../../api/entidades';
 
 const FlowProgress = ({ currentStatus }) => {
@@ -77,6 +77,9 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
     const [justificacionTexto, setJustificacionTexto] = useState(() => order?.motivoCambioTecnico || '');
     const [justificacionTecnicoId, setJustificacionTecnicoId] = useState(() => (order?.tecnicoId ? String(order.tecnicoId) : ''));
     const [savingJustificacion, setSavingJustificacion] = useState(false);
+    // FASE 13: número de factura post-cierre (editable tras entregar, estilo justificación)
+    const [facturaCierre, setFacturaCierre] = useState(() => (order?.numeroFactura ? String(order.numeroFactura) : ''));
+    const [savingFactura, setSavingFactura] = useState(false);
     // FASE 12: repuestos reales de la orden (normalizeOrden no los trae: repuestosUsados es [])
     const [repuestos, setRepuestos] = useState([]);
 
@@ -244,6 +247,31 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
             onNotify?.(`Error al guardar: ${err.message}`, 'error');
         } finally {
             setSavingJustificacion(false);
+        }
+    };
+
+    // FASE 13: guardar/actualizar número de factura de una orden ya entregada (RF-10)
+    const handleSaveFactura = async () => {
+        if (savingFactura) return;
+        const raw = facturaCierre.trim();
+        if (!raw) {
+            onNotify?.('Ingresa el número de factura antes de guardar.', 'error');
+            return;
+        }
+        const num = parseInt(raw.replace(/[^\d]/g, ''), 10);
+        if (Number.isNaN(num)) {
+            onNotify?.('El número de factura debe ser un valor numérico válido.', 'error');
+            return;
+        }
+        setSavingFactura(true);
+        try {
+            const updated = await registrarFactura(order.id, num);
+            onUpdateOrder?.(updated);
+            onNotify?.(`Factura N° ${num} registrada en la orden.`);
+        } catch (err) {
+            onNotify?.(`Error al guardar: ${err.message}`, 'error');
+        } finally {
+            setSavingFactura(false);
         }
     };
 
@@ -471,6 +499,27 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
                         <div className="flex justify-end">
                             <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleSaveJustificacion} disabled={savingJustificacion}>
                                 {savingJustificacion ? 'Guardando...' : 'Guardar Justificación'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {currentStatus === ORDER_STATUS.ENTREGADO && (
+                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-slate-700">Número de Factura</p>
+                        <p className="text-[11px] text-slate-500">
+                            La orden ya fue entregada. Registra o actualiza aquí el número de factura de esta orden.
+                        </p>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={facturaCierre}
+                                onChange={(e) => setFacturaCierre(e.target.value)}
+                                placeholder="Ej. 0001-234567"
+                                className="flex-1 text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                            />
+                            <Button variant="primary" size="sm" icon={Hash} onClick={handleSaveFactura} disabled={savingFactura}>
+                                {savingFactura ? 'Guardando...' : 'Guardar Factura'}
                             </Button>
                         </div>
                     </div>

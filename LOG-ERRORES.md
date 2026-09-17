@@ -654,3 +654,28 @@ al admin logueado y limitando al técnico a su estación.
 - El catalogo de 212 nombres del Excel QUEDA cargado en la BD dev (decision del usuario).
 
 ---
+
+## FASE 13 — N° Factura en ReportesPage + edición de factura post-cierre (COMPLETADA ✅)
+
+### 1. Campo N° Factura en la página de reportes
+- Backend controllers/reportes.js serviciosPorTecnico: se agrega `o.numero_factura` al SELECT de
+  GET /reportes/servicios (la fila del reporte ahora trae la factura).
+- ReportesPage.jsx: mapa liquidaciones agrega `numeroFactura: r.numero_factura ?? ''`;
+  plantilla de impresion agrega columna "N° Factura" (entre Fecha Ingreso y Monto Cobrado, con
+  colSpan ajustados: vacio 8, fila total 7); liquidacionColumns agrega la columna on-screen antes
+  de Monto Cobrado (muestra "—" cuando no hay factura).
+
+### 2. Edicion de factura despues de cerrar la orden
+- Se reuso el endpoint existente PATCH /ordenes/:id/factura (controllers/ordenes.js:260) que ya
+  persiste numero_factura SOLO en ordenes ENTREGADO, con auditoria modulo Liquidacion.
+- OrdenDetalleModal.jsx: seccion "Número de Factura" (estilo justificacion de cambio de tecnico)
+  visible cuando estado = ENTREGADO: input precargado con order.numeroFactura + boton "Guardar
+  Factura" -> registrarFactura(order.id, digitos). Normalizacion a digitos como en handleDeliver
+  (la columna es INTEGER). Lazy-init por lazy useState; el modal se remonta por orden via key.
+
+### Verificacion (FASE 13)
+- Backend node --check OK. Frontend: lint 0 | vitest 13/13 | build production OK.
+- Smoke test API: login jesus/123456 -> GET /reportes/servicios devuelve numero_factura
+  (orden 13 ENTREGADO -> 3250). Server temporal detenido.
+
+---
