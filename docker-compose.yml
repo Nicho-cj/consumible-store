@@ -1,10 +1,9 @@
-version: '3.8'
-
+name: consumiblestore-ordenes
 services:
-  db:
+  database:
     image: postgres:latest
-    container_name: db_ordenes_servicio_tecnico
-    restart: always
+    container_name: ordenes_database
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -15,7 +14,38 @@ services:
       - postgres_data:/var/lib/postgresql
       - ./init-db:/docker-entrypoint-initdb.d
 
-  # Aquí definiremos el backend y frontend
+  backend:
+    build: ./backend
+    container_name: ordenes_backend
+    restart: unless-stopped
+    ports:
+      - "${BACK_PORT}:3000"
+    environment:
+      BACK_PORT: ${BACK_PORT}
+      BACK_CORS: ${BACK_CORS}
+
+      FRONT_HOST: ${FRONT_HOST}
+      FRONT_PORT: ${FRONT_PORT}
+
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_NAME: ${DB_NAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_URI: ${DB_URI}
+
+      NODE_ENV: "production"
+    depends_on:
+      - database
+
+  frontend:
+    build: ./frontend
+    container_name: ordenes_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
