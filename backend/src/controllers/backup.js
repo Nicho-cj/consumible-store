@@ -1,68 +1,88 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs';
-import 'dotenv/config';
+import { spawn } from 'child_process';
 import { registrarAuditoria } from '../utils/auditoria.js';
 
-const execAsync = promisify(exec);
-
-// @REVISAR: pg_dump no siempre esta en el PATH del proceso (Windows).
-// Se prueban rutas absolutas conocidas (existentes) y se cae a pg_dump del PATH.
-function resolverPGDump() {
-    const rutasConocidas = [
-        process.env.PG_DUMP_PATH,
-        'C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe',
-        'C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe',
-        'C:\\Program Files\\PostgreSQL\\16\\bin\\pg_dump.exe',
-        'C:\\Program Files\\PostgreSQL\\15\\bin\\pg_dump.exe',
-    ].filter(Boolean);
-
-    for (const r of rutasConocidas) {
-        if (fs.existsSync(r)) return { bin: r, quotear: true };
-    }
-    return { bin: 'pg_dump', quotear: false };
-}
-
-// @REVISAR: controller de backup - RNF-06: permite descargar un respaldo SQL de la BD
-// Genera un pg_dump y lo devuelve como archivo descargable.
 export class BackupController {
     static async generar(req, res) {
-        try {
-            const { DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME } = process.env;
+        const CONTAINER_NAME = process.env.DB_CONTAINER_NAME;
+        const DB_USER = process.env.DB_USER;
+        const DB_NAME = process.env.DB_NAME;
+        const DB_PASSWORD = process.env.DB_PASSWORD;
 
-            // Configurar la contrasena en credenciales PGPASSWORD para no exponerla en el comando
-            const env = { ...process.env, PGPASSWORD: DB_PASSWORD };
-
-            const host = DB_HOST || 'localhost';
-            const port = DB_PORT || '5432';
-            const user = DB_USER || 'postgres';
-            const db = DB_NAME || 'postgres';
-
-            const pgDump = resolverPGDump();
-            const bin = pgDump.quotear ? `"${pgDump.bin}"` : pgDump.bin;
-
-            const { stdout } = await execAsync(
-                `${bin} -h ${host} -p ${port} -U ${user} -d ${db}`,
-                { env, maxBuffer: 50 * 1024 * 1024 }
-            );
-
-            const nombreArchivo = `backup_${db}_${new Date().toISOString().replace(/[:.]/g, '-')}.sql`;
-
-            await registrarAuditoria(req, {
-                modulo: 'Seguridad / Sistema',
-                accion: 'Copia de Seguridad',
-                detalles: `Respaldo generado por ${req.user?.nombre} (${Math.round(stdout.length / 1024)} KB)`,
-            });
-
-            res.setHeader('Content-Type', 'application/sql');
-            res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
-            res.status(200).send(stdout);
-        } catch (error) {
-            console.error('Error generando backup:', error);
-            res.status(500).json({
-                status: 'error',
-                message: 'No se pudo generar el backup. Verifique que pg_dump esté instalado y accesible.',
+        if (!CONTAINER_NAME || !DB_USER || !DB_NAME || !DB_PASSWORD) {
+            return res.status(500).json({
+                error: 'Faltan configuraciones de base de datos en las variables de entorno.'
             });
         }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupFileName = `backup-${DB_NAME}-${timestamp}.sql`;
+
+        // Configuramos las cabeceras de descarga de forma segura
+        res.setHeader('Content-Disposition', `attachment; filename="${backupFileName}"`);
+        res.setHeader('Content-Type', 'application/sql');
+
+        const args = [
+            'exec',
+            '-e', `PGPASSWORD=${DB_PASSWORD}`,
+            CONTAINER_NAME,
+            'pg_dump',
+            '-U', DB_USER,
+            DB_NAME
+        ];
+
+        const dockerProcess = spawn('docker', args);
+        let errorOcurrido = false;
+
+        dockerProcess.stderr.on('data', (data) => {
+            const mensaje = data.toString();
+            if (mensaje.toLowerCase().includes('error') || mensaje.toLowerCase().includes('fatal')) {
+                errorOcurrido = true;
+            }
+        });
+
+        // Interceptamos la tubería para asegurar que si hay un error crítico temprano, abortemos antes de enviar basura
+        dockerProcess.stdout.on('data', (chunk) => {
+            if (errorOcurrido) {
+                dockerProcess.kill();
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Error crítico durante el volcado de la base de datos.' });
+                } else {
+                    res.end();
+                }
+                return;
+            }
+        });
+
+        // Conectamos el flujo al cliente
+        dockerProcess.stdout.pipe(res);
+
+        dockerProcess.on('close', async (code) => {
+            if (code === 0 && !errorOcurrido) {
+                try {
+                    await registrarAuditoria(req, {
+                        modulo: 'Seguridad / Sistema',
+                        accion: 'Copia de Seguridad',
+                        detalles: `Respaldo generado exitosamente por ${req.user?.nombre || 'Sistema'}`,
+                    });
+                } catch (auditError) {
+                    // Fallo silencioso de auditoría para no afectar la respuesta HTTP, idealmente manejado por un logger interno
+                }
+            } else {
+                // Si el stream ya inició y falló a mitad de camino, destruimos la respuesta para corromper explícitamente el archivo incompleto en el cliente
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Error al generar el respaldo de la base de datos.' });
+                } else {
+                    res.destroy();
+                }
+            }
+        });
+
+        dockerProcess.on('error', () => {
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Error interno al ejecutar el proceso de respaldo.' });
+            } else {
+                res.destroy();
+            }
+        });
     }
 }
