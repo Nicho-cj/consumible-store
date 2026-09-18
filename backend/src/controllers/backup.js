@@ -22,41 +22,30 @@ export class BackupController {
         res.setHeader('Content-Type', 'application/sql');
 
         const args = [
-            'exec',
-            '-e', `PGPASSWORD=${DB_PASSWORD}`,
-            CONTAINER_NAME,
-            'pg_dump',
+            '-h', DB_HOST,
+            '-p', DB_PORT,
             '-U', DB_USER,
-            DB_NAME
+            '-d', DB_NAME,
+            '--no-owner',
+            '--no-acl'
         ];
 
-        const dockerProcess = spawn('docker', args);
+        const env = { ...process.env, PGPASSWORD: DB_PASSWORD };
+
+        const pgDumpProcess = spawn('pg_dump', args, { env });
         let errorOcurrido = false;
 
-        dockerProcess.stderr.on('data', (data) => {
+        pgDumpProcess.stderr.on('data', (data) => {
             const mensaje = data.toString();
+            // pg_dump a veces manda avisos menores por stderr, filtramos errores reales
             if (mensaje.toLowerCase().includes('error') || mensaje.toLowerCase().includes('fatal')) {
                 errorOcurrido = true;
             }
         });
 
-        // Interceptamos la tubería para asegurar que si hay un error crítico temprano, abortemos antes de enviar basura
-        dockerProcess.stdout.on('data', (chunk) => {
-            if (errorOcurrido) {
-                dockerProcess.kill();
-                if (!res.headersSent) {
-                    res.status(500).json({ error: 'Error crítico durante el volcado de la base de datos.' });
-                } else {
-                    res.end();
-                }
-                return;
-            }
-        });
+        pgDumpProcess.stdout.pipe(res);
 
-        // Conectamos el flujo al cliente
-        dockerProcess.stdout.pipe(res);
-
-        dockerProcess.on('close', async (code) => {
+        pgDumpProcess.on('close', async (code) => {
             if (code === 0 && !errorOcurrido) {
                 try {
                     await registrarAuditoria(req, {
@@ -65,10 +54,9 @@ export class BackupController {
                         detalles: `Respaldo generado exitosamente por ${req.user?.nombre || 'Sistema'}`,
                     });
                 } catch (auditError) {
-                    // Fallo silencioso de auditoría para no afectar la respuesta HTTP, idealmente manejado por un logger interno
+                    // Silencioso
                 }
             } else {
-                // Si el stream ya inició y falló a mitad de camino, destruimos la respuesta para corromper explícitamente el archivo incompleto en el cliente
                 if (!res.headersSent) {
                     res.status(500).json({ error: 'Error al generar el respaldo de la base de datos.' });
                 } else {
@@ -77,9 +65,12 @@ export class BackupController {
             }
         });
 
-        dockerProcess.on('error', () => {
+        pgDumpProcess.on('error', (err) => {
+            console.error('Error ejecutando pg_dump:', err);
             if (!res.headersSent) {
-                res.status(500).json({ error: 'Error interno al ejecutar el proceso de respaldo.' });
+                res.status(500).json({
+                    error: 'El contenedor del backend no tiene instalado la herramienta pg_dump. Asegúrate de incluirla en el Dockerfile.'
+                });
             } else {
                 res.destroy();
             }
