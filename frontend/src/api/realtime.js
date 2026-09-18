@@ -5,8 +5,13 @@
 import { useEffect, useRef } from 'react';
 import { getToken } from './client';
 
-const API_HOST = (import.meta.env.VITE_API_BASE || 'http://localhost:3000').replace(/^https?:\/\//, '');
-const WS_URL = `ws://${API_HOST}/ws`;
+// WS relativo al mismo origen (igual que /api): en produccion lo resuelve nginx, en
+// dev el proxy del vite.config. VITE_API_BASE solo como override absoluto (p.ej. https://dominio:puerto).
+const VITE_API_BASE = import.meta.env.VITE_API_BASE || '';
+const OVERRIDE = VITE_API_BASE.length > 0;
+const host = OVERRIDE ? VITE_API_BASE.replace(/^https?:\/\//, '') : (typeof window !== 'undefined' ? window.location.host : 'localhost');
+const isTls = OVERRIDE ? VITE_API_BASE.startsWith('https:') : (typeof window !== 'undefined' && window.location.protocol === 'https:');
+const WS_URL = `${isTls ? 'wss' : 'ws'}://${host}/ws`;
 
 let socket = null;
 let tokenAtConnect = null;

@@ -1,7 +1,9 @@
 // FASE 4 - cliente HTTP basico hacia el backend.
-// API_BASE se puede sobreescribir con VITE_API_BASE (produccion LAN = IP real).
+// API_BASE es relativa al mismo origen (/api) por defecto: en produccion lo resuelve
+// nginx (reverse proxy hacia el backend); en dev lo resuelve el proxy del vite.config.
+// VITE_API_BASE solo como override absoluto (p.ej. http://servidor:3000).
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export function getToken() {
     return sessionStorage.getItem('cs_token') || null;

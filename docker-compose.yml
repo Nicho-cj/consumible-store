@@ -23,6 +23,7 @@ services:
     environment:
       BACK_PORT: ${BACK_PORT}
       BACK_CORS: ${BACK_CORS}
+      BACK_JWT_KEY: ${BACK_JWT_KEY}
 
       FRONT_HOST: ${FRONT_HOST}
       FRONT_PORT: ${FRONT_PORT}

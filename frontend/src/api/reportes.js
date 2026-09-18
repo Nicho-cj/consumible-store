@@ -1,6 +1,6 @@
 // FASE 4 - reportes y backup (FASE 5-3 los usa)
 
-import { apiFetch } from './client';
+import { apiFetch, API_BASE } from './client';
 
 // GET /reportes/servicios?tecnico_id=X&desde=YYYY-MM-DD&hasta=YYYY-MM-DD (RF-12)
 export async function reporteServicios({ tecnicoId, desde, hasta } = {}) {
@@ -21,7 +21,7 @@ export async function listAuditoria() {
 
 // GET /backup -> dump SQL de la BD (RNF-06)
 export async function descargarBackup() {
-    const resp = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:3000'}/backup`, {
+    const resp = await fetch(`${API_BASE}/backup`, {
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${sessionStorage.getItem('cs_token') || ''}`,

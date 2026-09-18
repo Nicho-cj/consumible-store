@@ -1,5 +1,20 @@
 # React + Vite
 
+## Despliegue en produccion (dominio local)
+
+El frontend se sirve con Nginx (mismo origen) y el backend queda detras de el:
+
+- Dominio local a usar: `consumiblestore.ordenes.local`.
+- En el router: IP estatica para la PC servidor.
+- En cada PC de la red: agregar en `C:\Windows\System32\drivers\etc\hosts`
+  una linea `IP_SERVIDOR consumiblestore.ordenes.local`.
+- En `nginx.conf`: el campo `server_name` usa ese dominio y hace de reverse proxy:
+  `/api/...` y `/ws` hacia el servicio `backend:3000` de Docker Compose.
+- El build no necesita variables de entorno: las peticiones son relativas (`/api/...`)
+  y las resuelve Nginx. `VITE_API_BASE` solo como override absoluto si se requiere.
+
+---
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
