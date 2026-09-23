@@ -58,7 +58,7 @@ const FlowProgress = ({ currentStatus }) => {
     );
 };
 
-const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) => {
+const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, currentRole }) => {
     const [showCloseForm, setShowCloseForm] = useState(false);
     const [contadorFinal, setContadorFinal] = useState('');
     const [montoCobro, setMontoCobro] = useState('');
@@ -109,7 +109,10 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
     const currentStatus = order.estado || ORDER_STATUS.REGISTRADO;
 
     // FASE 11: reasignación durante el flujo activo, justificación al cierre
-    const esReasignable = [
+    // FASE 2-3: el técnico solo observa información, no gestiona (RF-12 read-only en /ordenes)
+    const esTecnicoSoloLectura = currentRole === 'TECNICO';
+
+    const esReasignable = !esTecnicoSoloLectura && [
         ORDER_STATUS.REGISTRADO,
         ORDER_STATUS.EN_DIAGNOSTICO,
         ORDER_STATUS.SOLUCION_COTIZACION,
@@ -158,29 +161,20 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
     };
 
     const handleDeliver = async () => {
-        const cnt = parseInt(contadorFinal, 10);
         const monto = parseFloat(montoCobro);
 
-        if (isNaN(cnt) || cnt < 0) {
-            setCloseError('El contador final debe ser un número válido.');
-            return;
-        }
-        if (order.contadorInicial && cnt < order.contadorInicial) {
-            setCloseError(`El contador final (${cnt}) no puede ser menor al inicial (${order.contadorInicial}).`);
-            return;
-        }
         if (isNaN(monto) || monto < 0) {
-            setCloseError('El monto de cobro debe ser un número válido.');
+            setCloseError('El monto a pagar al técnico debe ser un número válido.');
             return;
         }
         if (!order.id || saving) return;
 
         setSaving(true);
         try {
-            // PATCH /ordenes/:id -> estado ENTREGADO + contador_final + monto_cobro + numero_factura (RF-08/RF-09)
+            // PATCH /ordenes/:id -> estado ENTREGADO + monto_cobro + numero_factura (RF-08/RF-09)
+            // El contador final (inicial y final) lo registra el técnico en su ficha al finalizar (RF-08/RF-09)
             const payload = {
                 estado: 'ENTREGADO',
-                contador_final: cnt,
                 monto_cobro: monto,
             };
             const factura = numeroFactura.trim();
@@ -557,22 +551,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
                         <p className="text-xs font-bold text-emerald-800">Registrar Entrega del Equipo</p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-xs font-semibold text-slate-700 block mb-1">Contador Final de Impresiones</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={contadorFinal}
-                                    onChange={(e) => { setContadorFinal(e.target.value); setCloseError(''); }}
-                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
-                                />
-                                {order.contadorInicial > 0 && (
-                                    <span className="text-[10px] text-slate-400 mt-1 block">
-                                        Inicial: {order.contadorInicial.toLocaleString()} | Impresiones: {Math.max(0, (parseInt(contadorFinal, 10) || 0) - order.contadorInicial)}
-                                    </span>
-                                )}
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-700 block mb-1">Monto de Cobro ($)</label>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Monto a Pagar al Técnico ($)</label>
                                 <input
                                     type="number"
                                     min="0"
@@ -580,7 +559,6 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify }) 
                                     value={montoCobro}
                                     onChange={(e) => { setMontoCobro(e.target.value); setCloseError(''); }}
                                     className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
-                                    placeholder="0.00"
                                 />
                             </div>
                             <div>

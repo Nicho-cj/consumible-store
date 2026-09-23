@@ -4,4 +4,17 @@
     :root {
         color-scheme: light;
     }
+
+    /* FASE 1 - MAYÚSCULAS VISUALES (solo cosmético, NO altera los datos enviados al backend) */
+    /* Aplica MAYÚSCULAS a la vista de datos en tablas, reportes y al teclear en los campos de texto */
+    table td,
+    table th {
+        text-transform: uppercase;
+    }
+
+    input:not([type='number']):not([type='checkbox']):not([type='radio']):not([type='date']):not([type='time']),
+    select,
+    textarea {
+        text-transform: uppercase;
+    }
 }
