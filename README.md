@@ -17,9 +17,55 @@ consumible-store/
 │   │   ├── pages/        # Vistas principales
 │   │   ├── routes/       # Configuración de rutas (AppRoutes)
 │   ├── package.json
-│ 
+│
 │
 └── backend/              # Servidor API REST / Servicios
     ├── src/
     ├── package.json
     └── .env.example
+
+consumible-store/
+├── LOG-ERRORES.md
+├── PROPUESTA.txt
+├── README.md
+├── docker-compose.yml
+├── frontend/
+│   ├── Dockerfile
+│   ├── README.md
+│   ├── nginx.conf
+│   ├── package.json
+│   ├── package-lock.json
+│   └── vite.config.js
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── api/
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   ├── layout/
+│   │   │   └── modals/
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages/
+│   │   ├── routes/
+│   │   ├── test/
+│   │   └── utils/
+├── backend/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── app.js
+│   ├── server.js
+│   └── src/
+│       ├── config/
+│       ├── controllers/
+│       ├── middlewares/
+│       ├── models/
+│       ├── routes/
+│       ├── schemas/
+│       └── utils/
+└── init-db/
+    ├── 01-init-tables.sql
+    ├── 02-insert-data.sql
+    └── 03-catalogo-repuestos.sql
