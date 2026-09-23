@@ -3,12 +3,13 @@ import { registrarAuditoria } from '../utils/auditoria.js';
 
 export class BackupController {
     static async generar(req, res) {
-        const CONTAINER_NAME = process.env.DB_CONTAINER_NAME;
+        const DB_HOST = process.env.DB_HOST;
+        const DB_PORT = process.env.DB_PORT || '5432';
         const DB_USER = process.env.DB_USER;
         const DB_NAME = process.env.DB_NAME;
         const DB_PASSWORD = process.env.DB_PASSWORD;
 
-        if (!CONTAINER_NAME || !DB_USER || !DB_NAME || !DB_PASSWORD) {
+        if (!DB_HOST || !DB_USER || !DB_NAME || !DB_PASSWORD) {
             return res.status(500).json({
                 error: 'Faltan configuraciones de base de datos en las variables de entorno.'
             });
@@ -37,9 +38,9 @@ export class BackupController {
 
         pgDumpProcess.stderr.on('data', (data) => {
             const mensaje = data.toString();
-            // pg_dump a veces manda avisos menores por stderr, filtramos errores reales
             if (mensaje.toLowerCase().includes('error') || mensaje.toLowerCase().includes('fatal')) {
                 errorOcurrido = true;
+                console.error('pg_dump stderr:', mensaje);
             }
         });
 
@@ -69,7 +70,7 @@ export class BackupController {
             console.error('Error ejecutando pg_dump:', err);
             if (!res.headersSent) {
                 res.status(500).json({
-                    error: 'El contenedor del backend no tiene instalado la herramienta pg_dump. Asegúrate de incluirla en el Dockerfile.'
+                    error: 'El contenedor no pudo ejecutar pg_dump.'
                 });
             } else {
                 res.destroy();
