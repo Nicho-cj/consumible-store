@@ -9,54 +9,40 @@ Sistema web para la gestión integral de órdenes de servicio técnico, control 
 El proyecto está organizado en dos módulos independientes (Frontend y Backend):
 
 ```text
-consumible-store/
-├── frontend/             # Cliente React.js + Vite
-│   ├── src/
-│   │   ├── assets/       # Recursos estáticos (imágenes, íconos)
-│   │   ├── components/   # Componentes UI reutilizables (common, layout)
-│   │   ├── pages/        # Vistas principales
-│   │   ├── routes/       # Configuración de rutas (AppRoutes)
-│   ├── package.json
-│
-│
-└── backend/              # Servidor API REST / Servicios
-    ├── src/
-    ├── package.json
-    └── .env.example
 
 consumible-store/
 ├── LOG-ERRORES.md
 ├── PROPUESTA.txt
 ├── README.md
 ├── docker-compose.yml
-├── frontend/
-│   ├── Dockerfile
+├── frontend/                       # Cliente React.js + Vite
+│   ├── Dockerfile                  # Contenedor NGINX para despliegue del Frontend
 │   ├── README.md
-│   ├── nginx.conf
+│   ├── nginx.config                # Configuracion del servidor NGINX
 │   ├── package.json
 │   ├── package-lock.json
-│   └── vite.config.js
+│   ├── vite.config.js
 │   ├── eslint.config.js
 │   ├── index.html
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── api/
-│   │   ├── components/
-│   │   │   ├── common/
-│   │   │   ├── layout/
-│   │   │   └── modals/
-│   │   ├── index.css
-│   │   ├── main.jsx
-│   │   ├── pages/
-│   │   ├── routes/
-│   │   ├── test/
-│   │   └── utils/
-├── backend/
-│   ├── Dockerfile
+│   └── src/
+│       ├── App.jsx
+│       ├── api/
+│       ├── components/             # Componentes UI reutilizables (common, layout)
+│       │   ├── common/
+│       │   ├── layout/
+│       │   └── modals/
+│       ├── index.css
+│       ├── main.jsx
+│       ├── pages/                  # Vistas principales
+│       ├── routes/                 # Configuración de rutas (AppRoutes)
+│       ├── test/
+│       └── utils/
+├── backend/                        # Servidor API REST / Servicios
+│   ├── Dockerfile                  # Contenedor Node
 │   ├── package.json
 │   ├── package-lock.json
-│   ├── app.js
-│   ├── server.js
+│   ├── app.js                      # Configuración de middlewares
+│   ├── server.js                   # Punto de incio y despliegue del servidor backend
 │   └── src/
 │       ├── config/
 │       ├── controllers/
