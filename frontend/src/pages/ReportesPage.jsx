@@ -44,8 +44,26 @@ const ReportContent = ({
     total = 0,
     resumen = [],
 }) => (
-    <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-8'}`}>
-        <div className="border-b-2 border-slate-900 pb-4 mb-4">
+    <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-6'}`}>
+        <style>{`
+            @media print {
+                @page {
+                    size: letter portrait;
+                    margin: 12mm 10mm 12mm 10mm;
+                }
+                body {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .printable-report {
+                    padding: 0 !important;
+                    width: 100% !important;
+                }
+            }
+        `}</style>
+
+        {/* Encabezado del Reporte */}
+        <div className="border-b-2 border-slate-900 pb-3 mb-3">
             <div className="flex flex-row justify-between items-start">
                 <div>
                     <div className="flex items-center gap-2">
@@ -61,85 +79,85 @@ const ReportContent = ({
                     <p><strong className="text-slate-800">Estatus:</strong> Servicios Finalizados / Cobrados</p>
                 </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-slate-200 text-center">
-                <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">Reporte de Detalles de Servicios para Liquidación</h2>
+            <div className="mt-2 pt-2 border-t border-slate-200 text-center">
+                <h2 className="text-xs font-black uppercase tracking-wide text-slate-900">Reporte de Detalles de Servicios para Liquidación</h2>
             </div>
         </div>
 
-        <div className="mb-4 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2 border border-slate-300 bg-slate-50 p-2.5 rounded">
+        {/* Resumen Métricas en Filtro */}
+        <div className="mb-3 text-[10px] grid grid-cols-4 gap-2 border border-slate-300 bg-slate-50 p-2 rounded">
             <div>
-                <span className="text-slate-500 block text-[10px]">Técnico:</span>
-                <strong className="text-slate-900">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
+                <span className="text-slate-500 block text-[9px]">Técnico:</span>
+                <strong className="text-slate-900 truncate block">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
             </div>
             <div>
-                <span className="text-slate-500 block text-[10px]">Rango de Fecha Ingreso:</span>
+                <span className="text-slate-500 block text-[9px]">Rango de Fecha Ingreso:</span>
                 <strong className="text-slate-900">{startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}</strong>
             </div>
             <div>
-                <span className="text-slate-500 block text-[10px]">Total Servicios:</span>
+                <span className="text-slate-500 block text-[9px]">Total Servicios:</span>
                 <strong className="text-slate-900">{rows.length} Registros</strong>
             </div>
             <div>
-                <span className="text-slate-500 block text-[10px]">Monto Total a Pagar:</span>
-                <strong className="text-emerald-700 text-xs">${total.toFixed(2)}</strong>
+                <span className="text-slate-500 block text-[9px]">Monto Total a Pagar:</span>
+                <strong className="text-emerald-700 text-xs font-mono">${total.toFixed(2)}</strong>
             </div>
         </div>
 
-        <table className="w-full text-left text-[11px] border-collapse border border-slate-800 mb-4">
+        {/* Tabla Principal alineada exactamente a 7 columnas */}
+        <table className="w-full text-left border-collapse border border-slate-800 mb-3 table-fixed">
             <thead>
-                <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[10px]">
-                    <th className="p-1.5 border border-slate-800 text-center w-24">N° Orden</th>
-                    <th className="p-1.5 border border-slate-800">Técnico</th>
-                    <th className="p-1.5 border border-slate-800">Cliente</th>
-                    <th className="p-1.5 border border-slate-800">Equipo y Serial</th>
-                    <th className="p-1.5 border border-slate-800 text-center w-24">Fecha Ingreso</th>
-                    <th className="p-1.5 border border-slate-800 text-center w-28">N° Factura</th>
-                    <th className="p-1.5 border border-slate-800 text-right w-24">Monto a Pagar</th>
+                <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[9px]">
+                    <th className="p-1 border border-slate-800 text-center w-[14%]">N° Orden</th>
+                    <th className="p-1 border border-slate-800 w-[12%]">Técnico</th>
+                    <th className="p-1 border border-slate-800 w-[24%]">Cliente</th>
+                    <th className="p-1 border border-slate-800 w-[22%]">Equipo y Serial</th>
+                    <th className="p-1 border border-slate-800 text-center w-[12%]">Fecha Ingreso</th>
+                    <th className="p-1 border border-slate-800 text-center w-[11%]">N° Factura</th>
+                    <th className="p-1 border border-slate-800 text-right w-[11%]">Monto Pagar</th>
                 </tr>
             </thead>
             <tbody>
                 {rows.length === 0 ? (
                     <tr>
-                        <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
+                        <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800 text-xs">
+                            No se encontraron servicios en el rango de fechas seleccionado.
+                        </td>
                     </tr>
                 ) : (
                     rows.map((row, idx) => (
-                        <tr key={row.id} className={`border-b border-slate-400 ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
-                            <td className="p-1.5 border border-slate-800 font-mono font-bold text-center text-slate-900">{row.codigo}</td>
-                            <td className="p-1.5 border border-slate-800 font-medium text-slate-800">{row.tecnico}</td>
-                            <td className="p-1.5 border border-slate-800 text-slate-800">{row.cliente}</td>
-                            <td className="p-1.5 border border-slate-800 text-slate-800">
-                                <div className="font-semibold">{row.equipo}</div>
-                                <div className="text-[9px] text-slate-600 font-mono">S/N: {row.serial}</div>
+                        <tr key={row.id} className={`border-b border-slate-400 text-[9.5px] ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
+                            <td className="p-1 border border-slate-800 font-mono font-bold text-center text-slate-900">{row.codigo}</td>
+                            <td className="p-1 border border-slate-800 font-medium text-slate-800 truncate">{row.tecnico}</td>
+                            <td className="p-1 border border-slate-800 text-slate-800 truncate">{row.cliente}</td>
+                            <td className="p-1 border border-slate-800 text-slate-800">
+                                <div className="font-semibold truncate">{row.equipo}</div>
+                                <div className="text-[8.5px] text-slate-600 font-mono">S/N: {row.serial}</div>
                             </td>
-                            <td className="p-1.5 border border-slate-800 text-slate-700 leading-tight">
-                                    {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
-                                        <div className="text-[9px] text-amber-800 font-medium">Repuesto: {row.repuestosUsados}</div>
-                                    )}
-                                </td>
-                            <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
-                            <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-800">{row.numeroFactura || '—'}</td>
-                            <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
+                            <td className="p-1 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
+                            <td className="p-1 border border-slate-800 text-center font-mono text-slate-800">{row.numeroFactura || '—'}</td>
+                            <td className="p-1 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
                         </tr>
                     ))
                 )}
             </tbody>
             <tfoot>
-                <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold">
-                    <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General a Pagar ({rows.length} Servicios):</td>
-                    <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">${total.toFixed(2)}</td>
+                <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold text-[9.5px]">
+                    <td colSpan="6" className="p-1.5 border border-slate-800 text-right uppercase">Total General a Pagar ({rows.length} Servicios):</td>
+                    <td className="p-1.5 border border-slate-800 text-right font-mono text-xs text-slate-900">${total.toFixed(2)}</td>
                 </tr>
             </tfoot>
         </table>
 
+        {/* Consolidado por técnico */}
         {resumen.length > 0 && selectedTechnician === 'ALL' && (
-            <div className="mb-6 pt-2">
-                <h3 className="text-[10px] font-bold uppercase text-slate-700 mb-1">Consolidado por Técnico en el Período</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+            <div className="pt-1">
+                <h3 className="text-[9px] font-bold uppercase text-slate-700 mb-1">Consolidado por Técnico en el Período</h3>
+                <div className="grid grid-cols-4 gap-1.5 text-[9px]">
                     {resumen.map((t) => (
-                        <div key={t.nombre} className="border border-slate-300 p-1.5 rounded bg-slate-50">
+                        <div key={t.nombre} className="border border-slate-300 p-1 rounded bg-slate-50">
                             <span className="font-bold block text-slate-800 truncate">{t.nombre}</span>
-                            <div className="flex justify-between text-slate-600 mt-0.5">
+                            <div className="flex justify-between text-slate-600 mt-0.5 font-mono">
                                 <span>{t.servicios} serv.</span>
                                 <strong className="text-slate-900">${t.totalCobrado.toFixed(2)}</strong>
                             </div>
@@ -219,7 +237,6 @@ const ReportesPage = () => {
         cliente: r.cliente_nombre || '-',
         equipo: [r.marca, r.modelo].filter(Boolean).join(' ') || '-',
         serial: r.nro_serial || '-',
-        repuestosUsados: 'Ninguno',
         fechaIngreso: r.fecha_ingreso ? r.fecha_ingreso.slice(0, 10) : '',
         numeroFactura: r.numero_factura ?? '',
         montoTotal: Number(r.monto_cobro) || 0,
