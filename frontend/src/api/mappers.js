@@ -62,7 +62,7 @@ export function normalizeOrden(raw) {
         equipoModelo: raw.equipo_modelo,
         equipoSerial: raw.equipo_serial,
         equipoSerie: raw.equipo_serial,
-        tipoEquipo: raw.equipo_descripcion || raw.equipo_modelo,
+        tipoEquipo: raw.equipo_marca || raw.equipo_modelo || 'Equipo',
 
         // tecnico
         tecnicoId: raw.id_tecnico,

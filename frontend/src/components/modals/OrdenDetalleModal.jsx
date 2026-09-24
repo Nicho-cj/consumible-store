@@ -408,7 +408,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
                         <div>
                             <span className="text-slate-400 block font-medium">Equipo / Tipo</span>
-                            <span className="font-semibold text-slate-800">{order.tipoEquipo || 'N/A'}</span>
+                            <span className="font-semibold text-slate-800">{order.equipoMarca || order.tipoEquipo || 'N/A'}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Marca y Modelo</span>

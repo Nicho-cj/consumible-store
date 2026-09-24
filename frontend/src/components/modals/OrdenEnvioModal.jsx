@@ -20,7 +20,7 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
         fecha: order?.fecha || new Date().toLocaleDateString('es-VE'),
         clientName: order?.cliente?.nombre || order?.clienteNombre || 'Cliente General',
         telefono: order?.cliente?.telefono || '',
-        equipment: `${order?.equipo?.marca || ''} ${order?.equipo?.modelo || ''}`.trim() || order?.tipoEquipo || 'Equipo Técnico',
+        equipment: `${order?.equipo?.marca || order?.equipoMarca || ''} ${order?.equipo?.modelo || order?.equipoModelo || ''}`.trim() || order?.tipoEquipo || 'Equipo Técnico',
         serial: order?.equipo?.serial || order?.serial || 'S/N-000000',
         serviceType: order?.tipoServicio || 'Revisión y Diagnóstico',
         initialCounter: order?.contadorInicial || order?.contadorBN || 0,

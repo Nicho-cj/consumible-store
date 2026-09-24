@@ -200,7 +200,7 @@ const NewOrderModal = ({ isOpen, onClose, onSubmit }) => {
                         serial: serial.trim().toUpperCase(),
                         marca,
                         modelo,
-                        descripcion: observaciones,
+                        descripcion: '',
                         clienteId: idCliente,
                     });
                     idEquipo = nuevoEquipo.id;
