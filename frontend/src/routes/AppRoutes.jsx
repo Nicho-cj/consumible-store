@@ -80,7 +80,7 @@ const AppRoutes = ({
 
                 <Route
                     path="/ordenes"
-                    element={currentRole ? <OrdenesPage onOpenNewOrderModal={onOpenNewOrderModal} /> : <Navigate to="/login" replace />}
+                    element={currentRole === 'ADMIN_RECEPCION' ? <OrdenesPage onOpenNewOrderModal={onOpenNewOrderModal} /> : <Navigate to="/login" replace />}
                 />
                 <Route
                     path="/clientes"
@@ -90,7 +90,7 @@ const AppRoutes = ({
                     path="/tecnicos"
                     element={currentRole === 'ADMIN_RECEPCION' ? <TecnicosPage /> : <Navigate to="/login" replace />}
                 />
-                <Route path="/equipos" element={currentRole ? <EquiposPage /> : <Navigate to="/login" replace />} />
+                <Route path="/equipos" element={currentRole ? <EquiposPage currentRole={currentRole} /> : <Navigate to="/login" replace />} />
                 <Route
                     path="/reportes"
                     element={currentRole === 'ADMIN_RECEPCION' ? <ReportesPage /> : <Navigate to="/login" replace />}

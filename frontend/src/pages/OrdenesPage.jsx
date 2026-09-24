@@ -213,6 +213,7 @@ const OrdenesPage = ({ onOpenNewOrderModal }) => {
                 order={selectedOrden}
                 onUpdateOrder={handleUpdateOrder}
                 onNotify={showToast}
+                currentRole="ADMIN_RECEPCION"
             />
 
             <Toast message={toast} onDismiss={() => setToast(null)} />

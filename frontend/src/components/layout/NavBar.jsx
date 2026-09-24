@@ -14,7 +14,7 @@ import Button from '../common/Button';
 const NavBar = ({ currentRole, onOpenNewOrderModal }) => {
     const menuItems = [
         { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN_RECEPCION'] },
-        { path: '/ordenes', label: 'Órdenes de Servicio', icon: ClipboardList, roles: ['ADMIN_RECEPCION', 'TECNICO'] },
+        { path: '/ordenes', label: 'Órdenes de Servicio', icon: ClipboardList, roles: ['ADMIN_RECEPCION'] },
         { path: '/tecnico', label: 'Estación de Trabajo', icon: Wrench, roles: ['TECNICO'] },
         { path: '/clientes', label: 'Clientes', icon: Users, roles: ['ADMIN_RECEPCION'] },
         { path: '/equipos', label: 'Equipos', icon: Printer, roles: ['ADMIN_RECEPCION', 'TECNICO'] },

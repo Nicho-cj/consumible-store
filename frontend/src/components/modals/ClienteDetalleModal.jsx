@@ -55,10 +55,6 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
                         <span className="font-semibold text-slate-700">{customer.telefono || 'N/A'}</span>
                     </div>
                     <div>
-                        <span className="text-slate-400 block font-medium">Correo</span>
-                        <span className="font-semibold text-slate-700">{customer.email || 'N/A'}</span>
-                    </div>
-                    <div>
                         <span className="text-slate-400 block font-medium">Dirección</span>
                         <span className="font-semibold text-slate-700">{customer.direccion || 'N/A'}</span>
                     </div>

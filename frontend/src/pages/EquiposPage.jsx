@@ -18,7 +18,8 @@ const TIPOS_COMPATIBLES = [
     'Impresora Térmica / POS',
 ];
 
-const EquiposPage = () => {
+const EquiposPage = ({ currentRole }) => {
+    const esAdmin = currentRole === 'ADMIN_RECEPCION';
     const [equipos, setEquipos] = useState([]);
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -252,10 +253,12 @@ const EquiposPage = () => {
                         <History size={14} className="text-[#97C719]" />
                         <span>Refrescar</span>
                     </Button>
-                    <Button variant="primary" onClick={openCreateModal}>
-                        <Plus size={16} />
-                        <span>Registrar Equipo</span>
-                    </Button>
+                    {esAdmin && (
+                        <Button variant="primary" onClick={openCreateModal}>
+                            <Plus size={16} />
+                            <span>Registrar Equipo</span>
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -274,8 +277,9 @@ const EquiposPage = () => {
                 </Card>
             )}
 
-            {/* MODAL RF-03: Alta de Ficha Técnica */}
-            <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Registrar Ficha Técnica de Equipo (RF-03)">
+            {esAdmin && (
+                /* MODAL RF-03: Alta de Ficha Técnica */
+                <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Registrar Ficha Técnica de Equipo (RF-03)">
                 <form onSubmit={handleSaveEquipo} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <Input
@@ -357,7 +361,8 @@ const EquiposPage = () => {
                         </Button>
                     </div>
                 </form>
-            </Modal>
+                </Modal>
+            )}
 
             {/* MODAL RF-04: Consultar Historial del Equipo */}
             <Modal
@@ -381,13 +386,6 @@ const EquiposPage = () => {
                                 <span className="text-slate-400 block font-medium">Cliente</span>
                                 <span className="font-semibold text-slate-700">{selectedEquipment.cliente || '-'}</span>
                             </div>
-                            <div>
-                                <span className="text-slate-400 block font-medium">Contador Total</span>
-                                <span className="font-mono font-bold text-[#55720C] bg-[#F3F7E9] px-2 py-0.5 rounded">
-                                    {selectedEquipment.contadorBN?.toLocaleString()} pág.
-                                    {selectedEquipment.contadorColor > 0 && ` + ${selectedEquipment.contadorColor?.toLocaleString()} Color`}
-                                </span>
-                            </div>
                         </div>
 
                         <div>
@@ -410,6 +408,8 @@ const EquiposPage = () => {
                                         <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-[#E2E8F0]">
                                             <tr>
                                                 <th className="p-2.5">N° Orden</th>
+                                                <th className="p-2.5 text-right">Cont. Inicial</th>
+                                                <th className="p-2.5 text-right">Cont. Final</th>
                                                 <th className="p-2.5">Fecha</th>
                                                 <th className="p-2.5">Técnico</th>
                                                 <th className="p-2.5">Diagnóstico</th>
@@ -420,6 +420,8 @@ const EquiposPage = () => {
                                             {historial.map((item) => (
                                                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                                                     <td className="p-2.5 font-mono font-bold text-slate-800">{item.codigo}</td>
+                                                    <td className="p-2.5 text-right font-mono text-slate-700">{item.contadorInicial?.toLocaleString() ?? '-'}</td>
+                                                    <td className="p-2.5 text-right font-mono text-slate-700">{item.contadorFinal?.toLocaleString() ?? '-'}</td>
                                                     <td className="p-2.5 text-slate-500">{item.fechaIngreso}</td>
                                                     <td className="p-2.5 font-medium text-slate-700">{item.tecnicoNombre || '-'}</td>
                                                     <td className="p-2.5 text-slate-600 max-w-xs truncate" title={item.diagnostico}>{item.diagnostico || '-'}</td>

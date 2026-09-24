@@ -173,6 +173,7 @@ const DashboardPage = ({ onOpenNewOrderModal }) => {
                 order={selectedOrden}
                 onUpdateOrder={reload}
                 onNotify={showToast}
+                currentRole="ADMIN_RECEPCION"
             />
 
             <Toast message={toast} onDismiss={() => setToast(null)} />

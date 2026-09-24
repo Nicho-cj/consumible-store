@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, Hash, UserCheck } from 'lucide-react';
+import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, Hash, UserCheck, DollarSign, StickyNote } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
@@ -66,6 +66,14 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
     const [closeError, setCloseError] = useState('');
     const [saving, setSaving] = useState(false);
 
+    // FASE 14: pago al técnico sin marcar entrega (producto: clientes pagan pero no retiran)
+    const [showPagoForm, setShowPagoForm] = useState(false);
+    const [pagoMonto, setPagoMonto] = useState('');
+    const [pagoPagado, setPagoPagado] = useState('Sí');
+    const [pagoFactura, setPagoFactura] = useState('');
+    const [pagoError, setPagoError] = useState('');
+    const [savingPago, setSavingPago] = useState(false);
+
     // FASE 11: reasignación de técnico + justificación al cierre
     const [tecnicos, setTecnicos] = useState([]);
     const [showReassign, setShowReassign] = useState(false);
@@ -80,6 +88,9 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
     // FASE 13: número de factura post-cierre (editable tras entregar, estilo justificación)
     const [facturaCierre, setFacturaCierre] = useState(() => (order?.numeroFactura ? String(order.numeroFactura) : ''));
     const [savingFactura, setSavingFactura] = useState(false);
+    // FASE 15: fecha de salida editable post-entrega (el admin la coloca manualmente tras entregado/pagado)
+    const [fechaSalidaEdit, setFechaSalidaEdit] = useState(() => (order?.fechaEntregado ? String(order.fechaEntregado).slice(0, 10) : ''));
+    const [savingFechaSalida, setSavingFechaSalida] = useState(false);
     // FASE 12: repuestos reales de la orden (normalizeOrden no los trae: repuestosUsados es [])
     const [repuestos, setRepuestos] = useState([]);
 
@@ -154,10 +165,52 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
 
     const handleOpenCloseForm = () => {
         setShowCloseForm(true);
-        setContadorFinal(order.contadorInicial || '');
+        setContadorFinal(String(order.contadorFinal ?? order.contadorInicial ?? ''));
         setMontoCobro('');
         setNumeroFactura('');
         setCloseError('');
+    };
+
+    // FASE 14: registrar pago al técnico sin marcar la entrega (cliente pagó pero no retira)
+    const handleOpenPagoForm = () => {
+        setShowPagoForm(true);
+        setPagoMonto(order.montoCobro ? String(order.montoCobro) : '');
+        setPagoPagado('Sí');
+        setPagoFactura('');
+        setPagoError('');
+    };
+
+    const handleSavePago = async () => {
+        const monto = parseFloat(pagoMonto);
+
+        if (order.montoCobro != null && order.montoCobro > 0 && monto <= 0) {
+            setPagoError('El monto a pagar al técnico debe ser mayor a 0 para actualizar el pago.');
+            return;
+        }
+        if (isNaN(monto) || monto <= 0) {
+            setPagoError('Ingresa el monto a pagar al técnico antes de guardar el pago.');
+            return;
+        }
+        if (!order.id || savingPago) return;
+
+        setSavingPago(true);
+        try {
+            // PATCH /ordenes/:id -> solo monto_cobro SIN estado: la orden sigue en LISTO_ENTREGA
+            const payload = {
+                monto_cobro: monto,
+            };
+            const factura = pagoFactura.trim();
+            const numFactura = parseInt(factura.replace(/[^\d]/g, ''), 10);
+            if (factura && !Number.isNaN(numFactura)) payload.numero_factura = numFactura;
+            const updated = await patchOrden(order.id, payload);
+            onUpdateOrder?.(updated);
+            setShowPagoForm(false);
+            onNotify?.(`Pago al técnico registrado ($${monto.toFixed(2)}). La orden sigue pendiente de entrega.`);
+        } catch (err) {
+            setPagoError(err.message);
+        } finally {
+            setSavingPago(false);
+        }
     };
 
     const handleDeliver = async () => {
@@ -172,11 +225,15 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
         setSaving(true);
         try {
             // PATCH /ordenes/:id -> estado ENTREGADO + monto_cobro + numero_factura (RF-08/RF-09)
-            // El contador final (inicial y final) lo registra el técnico en su ficha al finalizar (RF-08/RF-09)
+            // El contador final se envía si se registró (opcional): satisface RN-04 y queda persistido en la nota
             const payload = {
                 estado: 'ENTREGADO',
                 monto_cobro: monto,
             };
+            const contFinal = parseInt(contadorFinal, 10);
+            if (contadorFinal.trim() !== '' && !Number.isNaN(contFinal) && contFinal >= 0) {
+                payload.contador_final = contFinal;
+            }
             const factura = numeroFactura.trim();
             const numFactura = parseInt(factura.replace(/[^\d]/g, ''), 10);
             if (factura && !Number.isNaN(numFactura)) payload.numero_factura = numFactura;
@@ -269,6 +326,30 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
         }
     };
 
+    // FASE 15: guardar/actualizar fecha de salida de una orden entregada (solo frontend: fecha_salida ya está en el allowlist backend)
+    const handleSaveFechaSalida = async () => {
+        const fecha = fechaSalidaEdit.trim();
+        if (!fecha) {
+            onNotify?.('Selecciona la fecha de salida antes de guardar.', 'error');
+            return;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+            onNotify?.('La fecha de salida debe tener el formato AAAA-MM-DD.', 'error');
+            return;
+        }
+        if (savingFechaSalida) return;
+        setSavingFechaSalida(true);
+        try {
+            const updated = await patchOrden(order.id, { fecha_salida: fecha });
+            onUpdateOrder?.(updated);
+            onNotify?.(`Fecha de salida actualizada: ${fecha}.`);
+        } catch (err) {
+            onNotify?.(`Error al guardar: ${err.message}`, 'error');
+        } finally {
+            setSavingFechaSalida(false);
+        }
+    };
+
     return (
         <Modal
             isOpen={isOpen}
@@ -303,7 +384,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                         <User size={14} className="text-[#55720C]" />
                         <span>DATOS DEL CLIENTE</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
                         <div>
                             <span className="text-slate-400 block font-medium">Nombre / Razón Social</span>
                             <span className="font-semibold text-slate-800">{order.clienteNombre || 'Cliente No Registrado'}</span>
@@ -315,10 +396,6 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                         <div>
                             <span className="text-slate-400 block font-medium">Teléfono Contacto</span>
                             <span className="font-mono text-slate-700">{order.clienteTelefono || 'N/A'}</span>
-                        </div>
-                        <div>
-                            <span className="text-slate-400 block font-medium">Correo Electrónico</span>
-                            <span className="text-slate-700">{order.clienteEmail || 'N/A'}</span>
                         </div>
                     </div>
                 </div>
@@ -365,6 +442,16 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                         </div>
                     )}
 
+                    {order.observaciones && (
+                        <div className="p-3 bg-slate-100 border border-slate-200 rounded-lg space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-slate-600">
+                                <StickyNote size={14} />
+                                <span>Notas Adicionales</span>
+                            </div>
+                            <p className="text-slate-700 leading-relaxed">{order.observaciones}</p>
+                        </div>
+                    )}
+
                     {repuestos.length > 0 && (
                         <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                             <span className="text-purple-700 font-bold block mb-1">Repuestos Utilizados:</span>
@@ -395,6 +482,13 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                             <Hash size={14} className="text-slate-400" />
                             <span className="text-slate-500">Contador Inicial:</span>
                             <span className="font-mono font-semibold text-slate-800">{order.contadorInicial.toLocaleString()}</span>
+                        </div>
+                    )}
+                    {order.contadorFinal > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Hash size={14} className="text-[#55720C]" />
+                            <span className="text-slate-500">Contador Final:</span>
+                            <span className="font-mono font-bold text-slate-800">{order.contadorFinal.toLocaleString()}</span>
                         </div>
                     )}
                     {order.numeroFactura && (
@@ -519,6 +613,26 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                     </div>
                 )}
 
+                {currentStatus === ORDER_STATUS.ENTREGADO && (
+                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-slate-700">Fecha de Salida</p>
+                        <p className="text-[11px] text-slate-500">
+                            Coloca manualmente la fecha en que el equipo salió (o saldrá) del taller, incluso después de entregado/pagado.
+                        </p>
+                        <div className="flex gap-2">
+                            <input
+                                type="date"
+                                value={fechaSalidaEdit}
+                                onChange={(e) => setFechaSalidaEdit(e.target.value)}
+                                className="flex-1 text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                            />
+                            <Button variant="primary" size="sm" icon={Calendar} onClick={handleSaveFechaSalida} disabled={savingFechaSalida}>
+                                {savingFechaSalida ? 'Guardando...' : 'Guardar Fecha de Salida'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {currentStatus === ORDER_STATUS.SOLUCION_COTIZACION && (
                     <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg space-y-3">
                         <p className="text-xs font-bold text-amber-800">
@@ -535,14 +649,77 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                     </div>
                 )}
 
-                {currentStatus === ORDER_STATUS.LISTO_ENTREGA && !showCloseForm && (
+                {currentStatus === ORDER_STATUS.LISTO_ENTREGA && !showCloseForm && !showPagoForm && (
                     <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg space-y-3">
                         <p className="text-xs font-bold text-emerald-800">
                             El tecnico ha finalizado el trabajo. El equipo está listo para entregar al cliente.
                         </p>
-                        <Button variant="primary" size="sm" icon={PackageCheck} onClick={handleOpenCloseForm}>
-                            Entregar Equipo al Cliente
-                        </Button>
+                        {order.montoCobro != null && order.montoCobro > 0 && (
+                            <p className="text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-md px-3 py-2">
+                                Pago al técnico registrado: ${Number(order.montoCobro).toLocaleString()}. El cliente aún no ha retirado el equipo.
+                            </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="secondary" size="sm" icon={DollarSign} onClick={handleOpenPagoForm}>
+                                {order.montoCobro != null && order.montoCobro > 0 ? 'Actualizar Pago al Técnico' : 'Registrar Pago al Técnico'}
+                            </Button>
+                            <Button variant="primary" size="sm" icon={PackageCheck} onClick={handleOpenCloseForm}>
+                                Entregar y Pagar
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {currentStatus === ORDER_STATUS.LISTO_ENTREGA && showPagoForm && (
+                    <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg space-y-3">
+                        <p className="text-xs font-bold text-emerald-800">Registrar Pago al Técnico</p>
+                        <p className="text-[11px] text-emerald-700">
+                            Registra el pago al técnico sin marcar la entrega. La orden seguirá en "Listo para Entrega".
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Monto a Pagar al Técnico ($)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={pagoMonto}
+                                    onChange={(e) => { setPagoMonto(e.target.value); setPagoError(''); }}
+                                    placeholder="0.00"
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">¿Pagado?</label>
+                                <select
+                                    value={pagoPagado}
+                                    onChange={(e) => setPagoPagado(e.target.value)}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none bg-white"
+                                >
+                                    <option value="No">No</option>
+                                    <option value="Sí">Sí</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">N° Factura (opcional)</label>
+                                <input
+                                    type="text"
+                                    value={pagoFactura}
+                                    onChange={(e) => { setPagoFactura(e.target.value); setPagoError(''); }}
+                                    placeholder="Ej. 0001-234567"
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                        {pagoError && (
+                            <p className="text-xs text-red-600 font-medium bg-red-50 border border-red-200 rounded px-3 py-2">{pagoError}</p>
+                        )}
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="secondary" size="sm" onClick={() => setShowPagoForm(false)}>Cancelar</Button>
+                            <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleSavePago} disabled={savingPago}>
+                                {savingPago ? 'Guardando...' : 'Guardar Pago'}
+                            </Button>
+                        </div>
                     </div>
                 )}
 
@@ -550,6 +727,18 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                     <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg space-y-3">
                         <p className="text-xs font-bold text-emerald-800">Registrar Entrega del Equipo</p>
                         <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Contador Final (opcional)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={contadorFinal}
+                                    onChange={(e) => { setContadorFinal(e.target.value); setCloseError(''); }}
+                                    placeholder="Si el equipo permite leerlo..."
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
+                                />
+                                <span className="text-[10px] text-slate-400 mt-1 block">Opcional: solo si el contador no se registró en la ficha técnica.</span>
+                            </div>
                             <div>
                                 <label className="text-xs font-semibold text-slate-700 block mb-1">Monto a Pagar al Técnico ($)</label>
                                 <input
@@ -560,6 +749,17 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                                     onChange={(e) => { setMontoCobro(e.target.value); setCloseError(''); }}
                                     className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
                                 />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">¿Pagado?</label>
+                                <select
+                                    value="Sí"
+                                    disabled
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md bg-slate-100 text-slate-500 focus:outline-none"
+                                >
+                                    <option value="Sí">Sí</option>
+                                </select>
+                                <span className="text-[10px] text-slate-400 mt-1 block">El pago se marca como pagado al entregar el equipo.</span>
                             </div>
                             <div>
                                 <label className="text-xs font-semibold text-slate-700 block mb-1">N° Factura (opcional)</label>
@@ -579,7 +779,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                         <div className="flex gap-2 justify-end">
                             <Button variant="secondary" size="sm" onClick={() => setShowCloseForm(false)}>Cancelar</Button>
                             <Button variant="primary" size="sm" icon={CheckCircle2} onClick={handleDeliver} disabled={saving}>
-                                {saving ? 'Entregando...' : 'Confirmar Entrega'}
+                                {saving ? 'Entregando...' : 'Entregar y Pagar'}
                             </Button>
                         </div>
                     </div>

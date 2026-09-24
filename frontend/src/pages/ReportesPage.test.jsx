@@ -70,13 +70,13 @@ vi.mock('../api/entidades', () => ({
 }));
 
 describe('Página ReportesPage - Detalle de Servicios para Liquidación', () => {
-    it('renderiza las métricas y encabezados de los 7 campos requeridos', async () => {
+    it('renderiza las métricas y encabezados de los 6 campos requeridos', async () => {
         render(<ReportesPage />);
 
         expect(await screen.findByText('Pagos y Reportes de Servicios')).toBeInTheDocument();
 
         // Métricas (valores calculados desde el reporte real mockeado)
-        expect(await screen.findByText('Total Monto Cobrado')).toBeInTheDocument();
+        expect(await screen.findByText('Total Monto a Pagar')).toBeInTheDocument();
         expect(screen.getAllByText('$135.50').length).toBeGreaterThan(0);
         expect(screen.getByText('Servicios en el Reporte')).toBeInTheDocument();
         expect(screen.getByText('Ticket Promedio')).toBeInTheDocument();
@@ -87,9 +87,8 @@ describe('Página ReportesPage - Detalle de Servicios para Liquidación', () => 
         expect(screen.getAllByText('Técnico Responsable').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Cliente').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Equipo y Serial').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('Trabajo Realizado').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Fecha Ingreso').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('Monto Cobrado').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Monto a Pagar').length).toBeGreaterThan(0);
 
         // Verificar que NO exista columna de comisión de técnico por ahora
         expect(screen.queryByText('Comisión Técnico')).not.toBeInTheDocument();

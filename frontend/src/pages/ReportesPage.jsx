@@ -80,7 +80,7 @@ const ReportContent = ({
                 <strong className="text-slate-900">{rows.length} Registros</strong>
             </div>
             <div>
-                <span className="text-slate-500 block text-[10px]">Monto Total Cobrado:</span>
+                <span className="text-slate-500 block text-[10px]">Monto Total a Pagar:</span>
                 <strong className="text-emerald-700 text-xs">${total.toFixed(2)}</strong>
             </div>
         </div>
@@ -92,16 +92,15 @@ const ReportContent = ({
                     <th className="p-1.5 border border-slate-800">Técnico</th>
                     <th className="p-1.5 border border-slate-800">Cliente</th>
                     <th className="p-1.5 border border-slate-800">Equipo y Serial</th>
-                    <th className="p-1.5 border border-slate-800">Trabajo Realizado</th>
                     <th className="p-1.5 border border-slate-800 text-center w-24">Fecha Ingreso</th>
                     <th className="p-1.5 border border-slate-800 text-center w-28">N° Factura</th>
-                    <th className="p-1.5 border border-slate-800 text-right w-24">Monto Cobrado</th>
+                    <th className="p-1.5 border border-slate-800 text-right w-24">Monto a Pagar</th>
                 </tr>
             </thead>
             <tbody>
                 {rows.length === 0 ? (
                     <tr>
-                        <td colSpan="8" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
+                        <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800">No se encontraron servicios en el rango de fechas seleccionado.</td>
                     </tr>
                 ) : (
                     rows.map((row, idx) => (
@@ -114,11 +113,10 @@ const ReportContent = ({
                                 <div className="text-[9px] text-slate-600 font-mono">S/N: {row.serial}</div>
                             </td>
                             <td className="p-1.5 border border-slate-800 text-slate-700 leading-tight">
-                                <span>{row.trabajoRealizado}</span>
-                                {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
-                                    <div className="text-[9px] text-amber-800 font-medium">Repuesto: {row.repuestosUsados}</div>
-                                )}
-                            </td>
+                                    {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
+                                        <div className="text-[9px] text-amber-800 font-medium">Repuesto: {row.repuestosUsados}</div>
+                                    )}
+                                </td>
                             <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
                             <td className="p-1.5 border border-slate-800 text-center font-mono text-slate-800">{row.numeroFactura || '—'}</td>
                             <td className="p-1.5 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
@@ -128,7 +126,7 @@ const ReportContent = ({
             </tbody>
             <tfoot>
                 <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold">
-                    <td colSpan="7" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General Cobrado ({rows.length} Servicios):</td>
+                    <td colSpan="6" className="p-2 border border-slate-800 text-right uppercase text-[10px]">Total General a Pagar ({rows.length} Servicios):</td>
                     <td className="p-2 border border-slate-800 text-right font-mono text-xs text-slate-900">${total.toFixed(2)}</td>
                 </tr>
             </tfoot>
@@ -221,7 +219,6 @@ const ReportesPage = () => {
         cliente: r.cliente_nombre || '-',
         equipo: [r.marca, r.modelo].filter(Boolean).join(' ') || '-',
         serial: r.nro_serial || '-',
-        trabajoRealizado: r.trabajo_realizado || r.diagnostico_falla || '-',
         repuestosUsados: 'Ninguno',
         fechaIngreso: r.fecha_ingreso ? r.fecha_ingreso.slice(0, 10) : '',
         numeroFactura: r.numero_factura ?? '',
@@ -317,8 +314,7 @@ const ReportesPage = () => {
                 normalizeText(item.codigo).includes(query) ||
                 normalizeText(item.cliente).includes(query) ||
                 normalizeText(item.equipo).includes(query) ||
-                normalizeText(item.serial).includes(query) ||
-                normalizeText(item.trabajoRealizado).includes(query);
+                normalizeText(item.serial).includes(query);
 
             return matchesTecnico && matchesStart && matchesEnd && matchesSearch;
         });
@@ -391,21 +387,6 @@ const ReportesPage = () => {
             ),
         },
         {
-            key: 'trabajoRealizado',
-            label: 'Trabajo Realizado',
-            className: 'max-w-xs text-xs text-slate-600',
-            render: (row) => (
-                <div title={row.trabajoRealizado} className="max-w-[240px]">
-                    <span className="block text-xs leading-tight">{row.trabajoRealizado}</span>
-                    {row.repuestosUsados && row.repuestosUsados !== 'Ninguno' && (
-                        <span className="block text-[10px] text-amber-700 font-medium mt-0.5">
-                            Repuesto: {row.repuestosUsados}
-                        </span>
-                    )}
-                </div>
-            ),
-        },
-        {
             key: 'fechaIngreso',
             label: 'Fecha Ingreso',
             className: 'text-slate-600 font-mono text-xs whitespace-nowrap',
@@ -428,7 +409,7 @@ const ReportesPage = () => {
         },
         {
             key: 'montoTotal',
-            label: 'Monto Cobrado',
+            label: 'Monto a Pagar',
             className: 'font-bold text-slate-900 text-xs text-right',
             render: (row) => (
                 <span className="bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-md border border-emerald-200 font-mono">
@@ -523,7 +504,7 @@ const ReportesPage = () => {
 
                     {!loading && !error && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <MetricCard title="Total Monto Cobrado" value={`$${totalFacturado.toFixed(2)}`} icon={DollarSign} color="emerald" />
+                            <MetricCard title="Total Monto a Pagar" value={`$${totalFacturado.toFixed(2)}`} icon={DollarSign} color="emerald" />
                             <MetricCard title="Servicios en el Reporte" value={filteredLiquidaciones.length.toString()} icon={CheckCircle2} color="blue" />
                             <MetricCard title="Ticket Promedio" value={`$${ticketPromedio}`} icon={TrendingUp} color="amber" />
                             <MetricCard title="Técnicos Involucrados" value={resumenPorTecnico.length.toString()} icon={Users} color="primary" />
