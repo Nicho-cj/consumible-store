@@ -28,4 +28,7 @@ export const ordenSchema = z.object({
   fecha_salida: z.coerce.date().nullish(),
   motivo_cambio_tecnico: z.string().nullish(),
   numero_factura: z.number().int().positive('Número de factura inválido').nullish(),
+  // @REVISAR: factura_fiscal - flag booleano de factura fiscal/no fiscal. Sin .default()
+  // para no inyectar FALSE en PATCH parciales (mismo bug documentado en contador_inicio).
+  factura_fiscal: z.boolean().nullish(),
 });

@@ -11,7 +11,7 @@ export class ReportesController {
         let consulta = `
             SELECT o.id_orden, o.codigo_orden, o.fecha_ingreso, o.fecha_salida, o.estado,
                    o.monto_cobro, o.tipo_servicio, o.falla_reportada, o.cotizacion_aprobada,
-                   o.numero_factura,
+                   o.numero_factura, o.factura_fiscal,
                    t.id_tecnico, t.nombre AS tecnico_nombre,
                    n.diagnostico_falla, n.trabajo_realizado, n.contador_final,
                    c.nombre_completo AS cliente_nombre,
@@ -54,7 +54,9 @@ export class ReportesController {
         let consulta = `
             SELECT t.id_tecnico, t.nombre AS tecnico_nombre,
                    COUNT(o.id_orden) FILTER (WHERE o.estado IN ('LISTO_ENTREGA','ENTREGADO') AND o.cotizacion_aprobada = TRUE) AS total_servicios,
-                   COALESCE(SUM(o.monto_cobro) FILTER (WHERE o.estado IN ('LISTO_ENTREGA','ENTREGADO') AND o.cotizacion_aprobada = TRUE), 0) AS total_monto
+                   COALESCE(SUM(o.monto_cobro) FILTER (WHERE o.estado IN ('LISTO_ENTREGA','ENTREGADO') AND o.cotizacion_aprobada = TRUE), 0) AS total_monto,
+                   COALESCE(SUM(o.monto_cobro) FILTER (WHERE o.estado IN ('LISTO_ENTREGA','ENTREGADO') AND o.cotizacion_aprobada = TRUE AND o.factura_fiscal = TRUE), 0) AS total_monto_fiscal,
+                   COALESCE(SUM(o.monto_cobro) FILTER (WHERE o.estado IN ('LISTO_ENTREGA','ENTREGADO') AND o.cotizacion_aprobada = TRUE AND o.factura_fiscal = FALSE), 0) AS total_monto_no_fiscal
             FROM tecnico t
             LEFT JOIN orden_servicio o ON o.id_tecnico = t.id_tecnico
                AND o.estado IN ('LISTO_ENTREGA','ENTREGADO')

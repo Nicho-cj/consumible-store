@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import { codigoTecnico } from '../../utils/tecnico';
 
 const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
     const barcodeRef = useRef(null);
@@ -25,7 +26,7 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
         serviceType: order?.tipoServicio || 'Revisión y Diagnóstico',
         initialCounter: order?.contadorInicial || order?.contadorBN || 0,
         reportedFault: order?.equipo?.falla || order?.falla || 'Revisión general',
-        technician: order?.tecnicoAsignado || order?.tecnico || 'Asignado en Taller',
+        technicianCode: codigoTecnico(order?.tecnicoId),
         observaciones: order?.equipo?.observaciones || order?.observaciones || 'Ninguna'
     };
 
@@ -58,7 +59,7 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
             `💻 *Equipo:* ${orderData.equipment}\n` +
             `🔢 *Serial:* ${orderData.serial}\n` +
             `📋 *Servicio:* ${orderData.serviceType}\n` +
-            `👨‍🔧 *Técnico:* ${orderData.technician}\n` +
+            `👨‍🔧 *Técnico:* ${orderData.technicianCode || 'Por asignar'}\n` +
             `⚠️ *Falla Reportada:* ${orderData.reportedFault}\n\n` +
             `_Comprobante digital de recepción. Consulte el estado de su equipo con su número de orden o serial, pasado el tiempo estimado de 1 mes de avisado , no nos hacemos responsable por equipos en abandono._`;
     };
@@ -151,7 +152,7 @@ const OrdenEnvioModal = ({ isOpen, onClose, order }) => {
                         {/* Fila 2: Datos Técnicos */}
                         <div className="text-[8px] leading-tight space-y-0.5 my-auto">
                             <div className="truncate">
-                                <span className="font-bold">Técnico: {orderData.technician}</span>
+                                <span className="font-bold">Téc. {orderData.technicianCode || 'Por asignar'}</span>
                             </div>
                             <div className="truncate">
                                 <span className="font-bold">Equipo: {orderData.equipment}</span>

@@ -10,8 +10,9 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
     // y estos estados se inicializan (sin setState en effects)
     const [diagnostico, setDiagnostico] = useState(() => order?.diagnostico || '');
     const [notasAdicionales, setNotasAdicionales] = useState(() => order?.observaciones || '');
-    const [contadorInicial, setContadorInicial] = useState(() => (order?.contadorInicial ? String(order.contadorInicial) : ''));
-    const [contadorFinal, setContadorFinal] = useState(() => (order?.contadorFinal ? String(order.contadorFinal) : ''));
+    // Fix: ?? en vez de truthy para que el contador 0 no se pierda al inicializar
+    const [contadorInicial, setContadorInicial] = useState(() => (order?.contadorInicial != null ? String(order.contadorInicial) : ''));
+    const [contadorFinal, setContadorFinal] = useState(() => (order?.contadorFinal != null ? String(order.contadorFinal) : ''));
     const [repuestosUtilizados, setRepuestosUtilizados] = useState(() => order?.repuestosUsados || []);
     const [repuestosPrevios, setRepuestosPrevios] = useState(() => order?.repuestosUsados || []);
     const [catalogo, setCatalogo] = useState([]);
@@ -78,18 +79,43 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
     };
 
     // FASE 5-1: persistir nota (si no existe la crea) + sincronizar repuestos en BD
-    // Contadores opcionales: solo se envían si el técnico registró un valor válido
+    // Contadores obligatorios en PROCESO TECNICO (RN-03): no pueden quedar vacios, si pueden ser 0
+    const validarContadores = () => {
+        if (!esEnReparacion) return null;
+        if (contadorInicial.trim() === '' || contadorFinal.trim() === '') {
+            return 'Registra el contador inicial y el contador final (usa 0 si el equipo no tiene contador).';
+        }
+        const ini = parseInt(contadorInicial, 10);
+        const fin = parseInt(contadorFinal, 10);
+        if (Number.isNaN(ini) || ini < 0 || Number.isNaN(fin) || fin < 0) {
+            return 'Los contadores deben ser números válidos mayores o iguales a 0.';
+        }
+        if (fin < ini) {
+            return 'El contador final no puede ser menor que el contador inicial.';
+        }
+        return null;
+    };
+
     const guardarAvanceEnBackend = async () => {
+        const errorContadores = validarContadores();
+        if (errorContadores) throw new Error(errorContadores);
+
         const payloadNota = { diagnostico: diagnostico.trim() };
         const notas = notasAdicionales.trim();
         if (notas) payloadNota.observaciones = notas;
         const inicialInt = parseInt(contadorInicial, 10);
         const finalInt = parseInt(contadorFinal, 10);
-        if (contadorInicial.trim() !== '' && !Number.isNaN(inicialInt) && inicialInt >= 0) {
+        if (esEnReparacion) {
+            // Obligatorios: se envian siempre (0 es un valor valido)
             await patchOrden(order.id, { contador_inicio: inicialInt });
-        }
-        if (contadorFinal.trim() !== '' && !Number.isNaN(finalInt) && finalInt >= 0) {
             payloadNota.contadorFinal = finalInt;
+        } else {
+            if (contadorInicial.trim() !== '' && !Number.isNaN(inicialInt) && inicialInt >= 0) {
+                await patchOrden(order.id, { contador_inicio: inicialInt });
+            }
+            if (contadorFinal.trim() !== '' && !Number.isNaN(finalInt) && finalInt >= 0) {
+                payloadNota.contadorFinal = finalInt;
+            }
         }
         await saveNota(order.id, payloadNota);
         await syncRepuestos(order.id, repuestosPrevios, repuestosUtilizados);
@@ -294,11 +320,13 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
                                     </span>
                                 </div>
                                 <p className="text-[11px] text-slate-400">
-                                    Opcional: solo si el equipo permite revisar el contador de páginas.
+                                    Obligatorio: registra ambos contadores. Si el equipo no tiene contador, escribe <strong>0</strong>.
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Contador Inicial</label>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Contador Inicial <span className="text-red-500">*</span>
+                                    </label>
                                         <input
                                             type="number"
                                             min="0"
@@ -309,7 +337,9 @@ const TecnicoDiagnosticoModal = ({ isOpen, onClose, order, onSaveStatus }) => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Contador Final</label>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            Contador Final <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             type="number"
                                             min="0"

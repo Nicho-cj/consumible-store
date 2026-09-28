@@ -40,6 +40,7 @@ export function normalizeOrden(raw) {
         montoCobro: raw.monto_cobro,
         cotizacionAprobada: raw.cotizacion_aprobada,
         numeroFactura: raw.numero_factura,
+        facturaFiscal: raw.factura_fiscal === true,
         motivoCambioTecnico: raw.motivo_cambio_tecnico,
         observaciones: raw.nota_observaciones,
         notaObservaciones: raw.nota_observaciones,

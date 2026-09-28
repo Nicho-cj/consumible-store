@@ -257,9 +257,10 @@ export class OrdenController {
     }
 
     // @REVISAR: endpoint para registrar el numero de factura de una orden entregada (RF-10)
+    // tambien acepta factura_fiscal (opcional) para marcar factura fiscal/no fiscal
     static async registrarFactura(req, res) {
         const id = req.params.id
-        const { numero_factura } = req.body
+        const { numero_factura, factura_fiscal } = req.body
 
         if (numero_factura === undefined || numero_factura === null) {
             return res.status(400).json({ status: 'error', message: 'El campo numero_factura es requerido' })
@@ -274,7 +275,9 @@ export class OrdenController {
             return res.status(400).json({ status: 'error', message: 'Solo se puede registrar el número de factura en órdenes entregadas' })
         }
 
-        const resultado = await OrdenModel.patch(id, { numero_factura })
+        const payload = { numero_factura };
+        if (factura_fiscal !== undefined) payload.factura_fiscal = factura_fiscal;
+        const resultado = await OrdenModel.patch(id, payload)
         await registrarAuditoria(req, {
             modulo: 'Liquidación',
             accion: 'Registro de Factura',

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, Hash, UserCheck, DollarSign, StickyNote } from 'lucide-react';
+import { Wrench, User, Laptop, Calendar, AlertCircle, CheckCircle2, XCircle, PackageCheck, Hash, UserCheck, DollarSign, StickyNote, FileText } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
@@ -63,6 +63,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
     const [contadorFinal, setContadorFinal] = useState('');
     const [montoCobro, setMontoCobro] = useState('');
     const [numeroFactura, setNumeroFactura] = useState('');
+    const [facturaFiscal, setFacturaFiscal] = useState(() => order?.facturaFiscal === true);
     const [closeError, setCloseError] = useState('');
     const [saving, setSaving] = useState(false);
 
@@ -71,6 +72,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
     const [pagoMonto, setPagoMonto] = useState('');
     const [pagoPagado, setPagoPagado] = useState('Sí');
     const [pagoFactura, setPagoFactura] = useState('');
+    const [pagoFacturaFiscal, setPagoFacturaFiscal] = useState(() => order?.facturaFiscal === true);
     const [pagoError, setPagoError] = useState('');
     const [savingPago, setSavingPago] = useState(false);
 
@@ -87,6 +89,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
     const [savingJustificacion, setSavingJustificacion] = useState(false);
     // FASE 13: número de factura post-cierre (editable tras entregar, estilo justificación)
     const [facturaCierre, setFacturaCierre] = useState(() => (order?.numeroFactura ? String(order.numeroFactura) : ''));
+    const [facturaCierreFiscal, setFacturaCierreFiscal] = useState(() => order?.facturaFiscal === true);
     const [savingFactura, setSavingFactura] = useState(false);
     // FASE 15: fecha de salida editable post-entrega (el admin la coloca manualmente tras entregado/pagado)
     const [fechaSalidaEdit, setFechaSalidaEdit] = useState(() => (order?.fechaEntregado ? String(order.fechaEntregado).slice(0, 10) : ''));
@@ -168,6 +171,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
         setContadorFinal(String(order.contadorFinal ?? order.contadorInicial ?? ''));
         setMontoCobro('');
         setNumeroFactura('');
+        setFacturaFiscal(order.facturaFiscal === true);
         setCloseError('');
     };
 
@@ -177,6 +181,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
         setPagoMonto(order.montoCobro ? String(order.montoCobro) : '');
         setPagoPagado('Sí');
         setPagoFactura('');
+        setPagoFacturaFiscal(order.facturaFiscal === true);
         setPagoError('');
     };
 
@@ -198,6 +203,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
             // PATCH /ordenes/:id -> solo monto_cobro SIN estado: la orden sigue en LISTO_ENTREGA
             const payload = {
                 monto_cobro: monto,
+                factura_fiscal: pagoFacturaFiscal,
             };
             const factura = pagoFactura.trim();
             const numFactura = parseInt(factura.replace(/[^\d]/g, ''), 10);
@@ -229,6 +235,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
             const payload = {
                 estado: 'ENTREGADO',
                 monto_cobro: monto,
+                factura_fiscal: facturaFiscal,
             };
             const contFinal = parseInt(contadorFinal, 10);
             if (contadorFinal.trim() !== '' && !Number.isNaN(contFinal) && contFinal >= 0) {
@@ -316,7 +323,7 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
         }
         setSavingFactura(true);
         try {
-            const updated = await registrarFactura(order.id, num);
+            const updated = await registrarFactura(order.id, { numero_factura: num, factura_fiscal: facturaCierreFiscal });
             onUpdateOrder?.(updated);
             onNotify?.(`Factura N° ${num} registrada en la orden.`);
         } catch (err) {
@@ -496,6 +503,16 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                             <Hash size={14} className="text-emerald-500" />
                             <span className="text-slate-500">N° Factura:</span>
                             <span className="font-mono font-bold text-slate-800">{order.numeroFactura}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${order.facturaFiscal ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                {order.facturaFiscal ? 'Fiscal' : 'No Fiscal'}
+                            </span>
+                        </div>
+                    )}
+                    {order.facturaFiscal && !order.numeroFactura && (
+                        <div className="flex items-center gap-2">
+                            <FileText size={14} className="text-emerald-500" />
+                            <span className="text-slate-500">Factura:</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700`}>Fiscal</span>
                         </div>
                     )}
                 </div>
@@ -598,7 +615,15 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                         <p className="text-[11px] text-slate-500">
                             La orden ya fue entregada. Registra o actualiza aquí el número de factura de esta orden.
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                            <select
+                                value={facturaCierreFiscal ? 'FISCAL' : 'NO_FISCAL'}
+                                onChange={(e) => setFacturaCierreFiscal(e.target.value === 'FISCAL')}
+                                className="text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none bg-white shrink-0"
+                            >
+                                <option value="FISCAL">Fiscal</option>
+                                <option value="NO_FISCAL">No Fiscal</option>
+                            </select>
                             <input
                                 type="text"
                                 value={facturaCierre}
@@ -710,6 +735,17 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                                     className="w-full text-xs p-2.5 border border-slate-300 rounded-md font-mono focus:ring-2 focus:ring-[#97C719] focus:outline-none"
                                 />
                             </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Tipo de Factura</label>
+                                <select
+                                    value={pagoFacturaFiscal ? 'FISCAL' : 'NO_FISCAL'}
+                                    onChange={(e) => setPagoFacturaFiscal(e.target.value === 'FISCAL')}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none bg-white"
+                                >
+                                    <option value="FISCAL">Fiscal</option>
+                                    <option value="NO_FISCAL">No Fiscal</option>
+                                </select>
+                            </div>
                         </div>
                         {pagoError && (
                             <p className="text-xs text-red-600 font-medium bg-red-50 border border-red-200 rounded px-3 py-2">{pagoError}</p>
@@ -771,6 +807,18 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                                     placeholder="Ej. 0001-234567"
                                 />
                                 <span className="text-[10px] text-slate-400 mt-1 block">Si se registra, se muestra en el comprobante.</span>
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 block mb-1">Tipo de Factura</label>
+                                <select
+                                    value={facturaFiscal ? 'FISCAL' : 'NO_FISCAL'}
+                                    onChange={(e) => setFacturaFiscal(e.target.value === 'FISCAL')}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-[#97C719] focus:outline-none bg-white"
+                                >
+                                    <option value="FISCAL">Fiscal</option>
+                                    <option value="NO_FISCAL">No Fiscal</option>
+                                </select>
+                                <span className="text-[10px] text-slate-400 mt-1 block">Marca fiscal aunque el cliente aún no haya pedido la factura.</span>
                             </div>
                         </div>
                         {closeError && (

@@ -54,6 +54,7 @@ CREATE TABLE orden_servicio (
     cotizacion_aprobada   BOOLEAN DEFAULT NULL,
     monto_cobro           NUMERIC(10, 2),
     numero_factura        INTEGER,
+    factura_fiscal        BOOLEAN NOT NULL DEFAULT FALSE,
     motivo_cambio_tecnico TEXT,
     id_cliente            INTEGER NOT NULL,
     id_equipo             INTEGER NOT NULL,

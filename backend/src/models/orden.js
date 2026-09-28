@@ -96,7 +96,7 @@ export class OrdenModel {
         const allowed = [
             'estado', 'cotizacion_aprobada', 'monto_cobro', 'contador_inicio',
             'id_tecnico', 'fecha_salida', 'motivo_cambio_tecnico', 'numero_factura',
-            'falla_reportada', 'tipo_servicio'
+            'falla_reportada', 'tipo_servicio', 'factura_fiscal'
         ];
 
         for (const [key, value] of Object.entries(data)) {

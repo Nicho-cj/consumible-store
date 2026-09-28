@@ -43,9 +43,20 @@ const ReportContent = ({
     rows = [],
     total = 0,
     resumen = [],
-}) => (
-    <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-6'}`}>
-        <style>{`
+}) => {
+    // Desglose fiscal/no fiscal calculado sobre las filas ya filtradas (respeta el filtro activo)
+    const { totalFiscal, totalNoFiscal } = rows.reduce(
+        (acc, row) => {
+            if (row.facturaFiscal) acc.totalFiscal += row.montoTotal;
+            else acc.totalNoFiscal += row.montoTotal;
+            return acc;
+        },
+        { totalFiscal: 0, totalNoFiscal: 0 }
+    );
+
+    return (
+        <div className={`printable-report bg-white text-black ${isModalView ? 'p-4' : 'p-6'}`}>
+            <style>{`
             @media print {
                 @page {
                     size: letter portrait;
@@ -62,112 +73,140 @@ const ReportContent = ({
             }
         `}</style>
 
-        {/* Encabezado del Reporte */}
-        <div className="border-b-2 border-slate-900 pb-3 mb-3">
-            <div className="flex flex-row justify-between items-start">
-                <div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-[#97C719] rounded flex items-center justify-center text-white font-bold text-xs border border-black">CS</div>
-                        <h1 className="text-base font-black tracking-tight text-slate-900">CONSUMIBLE STORE, C.A.</h1>
-                    </div>
-                    <p className="text-[11px] text-slate-600 font-medium mt-0.5">RIF: J-40891234-5 | Soporte y Servicio Técnico Especializado</p>
-                    <p className="text-[10px] text-slate-500">C.C. Bolívar, Nivel PB, Local 12, Puerto Ordaz, Edo. Bolívar</p>
-                </div>
-                <div className="text-right text-[10px] text-slate-600 space-y-0.5 border-l border-slate-300 pl-3">
-                    <p><strong className="text-slate-800">Fecha Emisión:</strong> {new Date().toLocaleDateString('es-VE')} {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</p>
-                    <p><strong className="text-slate-800">Generado por:</strong> Administración / Recepción</p>
-                    <p><strong className="text-slate-800">Estatus:</strong> Servicios Finalizados / Cobrados</p>
-                </div>
-            </div>
-            <div className="mt-2 pt-2 border-t border-slate-200 text-center">
-                <h2 className="text-xs font-black uppercase tracking-wide text-slate-900">Reporte de Detalles de Servicios para Liquidación</h2>
-            </div>
-        </div>
-
-        {/* Resumen Métricas en Filtro */}
-        <div className="mb-3 text-[10px] grid grid-cols-4 gap-2 border border-slate-300 bg-slate-50 p-2 rounded">
-            <div>
-                <span className="text-slate-500 block text-[9px]">Técnico:</span>
-                <strong className="text-slate-900 truncate block">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
-            </div>
-            <div>
-                <span className="text-slate-500 block text-[9px]">Rango de Fecha Ingreso:</span>
-                <strong className="text-slate-900">{startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}</strong>
-            </div>
-            <div>
-                <span className="text-slate-500 block text-[9px]">Total Servicios:</span>
-                <strong className="text-slate-900">{rows.length} Registros</strong>
-            </div>
-            <div>
-                <span className="text-slate-500 block text-[9px]">Monto Total a Pagar:</span>
-                <strong className="text-emerald-700 text-xs font-mono">${total.toFixed(2)}</strong>
-            </div>
-        </div>
-
-        {/* Tabla Principal alineada exactamente a 7 columnas */}
-        <table className="w-full text-left border-collapse border border-slate-800 mb-3 table-fixed">
-            <thead>
-                <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[9px]">
-                    <th className="p-1 border border-slate-800 text-center w-[14%]">N° Orden</th>
-                    <th className="p-1 border border-slate-800 w-[12%]">Técnico</th>
-                    <th className="p-1 border border-slate-800 w-[24%]">Cliente</th>
-                    <th className="p-1 border border-slate-800 w-[22%]">Equipo y Serial</th>
-                    <th className="p-1 border border-slate-800 text-center w-[12%]">Fecha Ingreso</th>
-                    <th className="p-1 border border-slate-800 text-center w-[11%]">N° Factura</th>
-                    <th className="p-1 border border-slate-800 text-right w-[11%]">Monto Pagar</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows.length === 0 ? (
-                    <tr>
-                        <td colSpan="7" className="p-4 text-center text-slate-500 italic border border-slate-800 text-xs">
-                            No se encontraron servicios en el rango de fechas seleccionado.
-                        </td>
-                    </tr>
-                ) : (
-                    rows.map((row, idx) => (
-                        <tr key={row.id} className={`border-b border-slate-400 text-[9.5px] ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
-                            <td className="p-1 border border-slate-800 font-mono font-bold text-center text-slate-900">{row.codigo}</td>
-                            <td className="p-1 border border-slate-800 font-medium text-slate-800 truncate">{row.tecnico}</td>
-                            <td className="p-1 border border-slate-800 text-slate-800 truncate">{row.cliente}</td>
-                            <td className="p-1 border border-slate-800 text-slate-800">
-                                <div className="font-semibold truncate">{row.equipo}</div>
-                                <div className="text-[8.5px] text-slate-600 font-mono">S/N: {row.serial}</div>
-                            </td>
-                            <td className="p-1 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
-                            <td className="p-1 border border-slate-800 text-center font-mono text-slate-800">{row.numeroFactura || '—'}</td>
-                            <td className="p-1 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
-                        </tr>
-                    ))
-                )}
-            </tbody>
-            <tfoot>
-                <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold text-[9.5px]">
-                    <td colSpan="6" className="p-1.5 border border-slate-800 text-right uppercase">Total General a Pagar ({rows.length} Servicios):</td>
-                    <td className="p-1.5 border border-slate-800 text-right font-mono text-xs text-slate-900">${total.toFixed(2)}</td>
-                </tr>
-            </tfoot>
-        </table>
-
-        {/* Consolidado por técnico */}
-        {resumen.length > 0 && selectedTechnician === 'ALL' && (
-            <div className="pt-1">
-                <h3 className="text-[9px] font-bold uppercase text-slate-700 mb-1">Consolidado por Técnico en el Período</h3>
-                <div className="grid grid-cols-4 gap-1.5 text-[9px]">
-                    {resumen.map((t) => (
-                        <div key={t.nombre} className="border border-slate-300 p-1 rounded bg-slate-50">
-                            <span className="font-bold block text-slate-800 truncate">{t.nombre}</span>
-                            <div className="flex justify-between text-slate-600 mt-0.5 font-mono">
-                                <span>{t.servicios} serv.</span>
-                                <strong className="text-slate-900">${t.totalCobrado.toFixed(2)}</strong>
-                            </div>
+            {/* Encabezado del Reporte */}
+            <div className="border-b-2 border-slate-900 pb-3 mb-3">
+                <div className="flex flex-row justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-[#97C719] rounded flex items-center justify-center text-white font-bold text-xs border border-black">CS</div>
+                            <h1 className="text-base font-black tracking-tight text-slate-900">CONSUMIBLE STORE, C.A.</h1>
                         </div>
-                    ))}
+                        <p className="text-[11px] text-slate-600 font-medium mt-0.5">RIF: J-40891234-5 | Soporte y Servicio Técnico Especializado</p>
+                        <p className="text-[10px] text-slate-500">C.C. Bolívar, Nivel PB, Local 12, Puerto Ordaz, Edo. Bolívar</p>
+                    </div>
+                    <div className="text-right text-[10px] text-slate-600 space-y-0.5 border-l border-slate-300 pl-3">
+                        <p><strong className="text-slate-800">Fecha Emisión:</strong> {new Date().toLocaleDateString('es-VE')} {new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p><strong className="text-slate-800">Generado por:</strong> Administración / Recepción</p>
+                        <p><strong className="text-slate-800">Estatus:</strong> Servicios Finalizados / Cobrados</p>
+                    </div>
+                </div>
+                <div className="mt-2 pt-2 border-t border-slate-200 text-center">
+                    <h2 className="text-xs font-black uppercase tracking-wide text-slate-900">Reporte de Detalles de Servicios</h2>
                 </div>
             </div>
-        )}
-    </div>
-);
+
+            {/* Resumen Métricas en Filtro */}
+            <div className="mb-3 text-[10px] grid grid-cols-6 gap-2 border border-slate-300 bg-slate-50 p-2 rounded">
+                <div>
+                    <span className="text-slate-500 block text-[9px]">Técnico:</span>
+                    <strong className="text-slate-900 truncate block">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[9px]">Rango de Fecha Ingreso:</span>
+                    <strong className="text-slate-900">{startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}</strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[9px]">Total Servicios:</span>
+                    <strong className="text-slate-900">{rows.length} Registros</strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[9px]">Monto Total a Pagar:</span>
+                    <strong className="text-emerald-700 text-xs font-mono">${total.toFixed(2)}</strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[9px]">Facturas Fiscales:</span>
+                    <strong className="text-emerald-700 text-xs font-mono">${totalFiscal.toFixed(2)}</strong>
+                </div>
+                <div>
+                    <span className="text-slate-500 block text-[9px]">Facturas No Fiscales:</span>
+                    <strong className="text-slate-700 text-xs font-mono">${totalNoFiscal.toFixed(2)}</strong>
+                </div>
+            </div>
+
+            {/* Tabla Principal alineada exactamente a 8 columnas */}
+            <table className="w-full text-left border-collapse border border-slate-800 mb-3 table-fixed">
+                <thead>
+                    <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[9px]">
+                        <th className="p-1 border border-slate-800 text-center w-[13%]">N° Orden</th>
+                        <th className="p-1 border border-slate-800 w-[11%]">Técnico</th>
+                        <th className="p-1 border border-slate-800 w-[21%]">Cliente</th>
+                        <th className="p-1 border border-slate-800 w-[20%]">Equipo y Serial</th>
+                        <th className="p-1 border border-slate-800 text-center w-[11%]">Fecha Ingreso</th>
+                        <th className="p-1 border border-slate-800 text-center w-[10%]">N° Factura</th>
+                        <th className="p-1 border border-slate-800 text-center w-[7%]">Tipo Fac.</th>
+                        <th className="p-1 border border-slate-800 text-right w-[9%]">Monto Pagar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.length === 0 ? (
+                        <tr>
+                            <td colSpan="8" className="p-4 text-center text-slate-500 italic border border-slate-800 text-xs">
+                                No se encontraron servicios en el rango de fechas seleccionado.
+                            </td>
+                        </tr>
+                    ) : (
+                        rows.map((row, idx) => (
+                            <tr key={row.id} className={`border-b border-slate-400 text-[9.5px] ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
+                                <td className="p-1 border border-slate-800 font-mono font-bold text-center text-slate-900">{row.codigo}</td>
+                                <td className="p-1 border border-slate-800 font-medium text-slate-800 truncate">{row.tecnico}</td>
+                                <td className="p-1 border border-slate-800 text-slate-800 truncate">{row.cliente}</td>
+                                <td className="p-1 border border-slate-800 text-slate-800">
+                                    <div className="font-semibold truncate">{row.equipo}</div>
+                                    <div className="text-[8.5px] text-slate-600 font-mono">S/N: {row.serial}</div>
+                                </td>
+                                <td className="p-1 border border-slate-800 text-center font-mono text-slate-700">{formatDate(row.fechaIngreso)}</td>
+                                <td className="p-1 border border-slate-800 text-center font-mono text-slate-800">{row.numeroFactura || '—'}</td>
+                                <td className="p-1 border border-slate-800 text-center text-slate-700">{row.facturaFiscal ? 'Fiscal' : 'No Fiscal'}</td>
+                                <td className="p-1 border border-slate-800 text-right font-bold font-mono text-slate-900">${row.montoTotal.toFixed(2)}</td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+                <tfoot>
+                    <tr className="bg-slate-200 border-t-2 border-slate-900 font-bold text-[9.5px]">
+                        <td colSpan="7" className="p-1.5 border border-slate-800 text-right uppercase">Total General a Pagar ({rows.length} Servicios):</td>
+                        <td className="p-1.5 border border-slate-800 text-right font-mono text-xs text-slate-900">${total.toFixed(2)}</td>
+                    </tr>
+                    <tr className="bg-slate-100 border-t border-slate-800 text-[9px]">
+                        <td colSpan="7" className="p-1.5 border border-slate-800 text-right uppercase text-slate-600">
+                            Fiscal: ${totalFiscal.toFixed(2)} · No Fiscal: ${totalNoFiscal.toFixed(2)}
+                        </td>
+                        <td className="p-1.5 border border-slate-800" />
+                    </tr>
+                </tfoot>
+            </table>
+
+            {/* Consolidado por técnico: totales a pagar, fiscal y no fiscal */}
+            {resumen.length > 0 && (
+                <div className="pt-1">
+                    <h3 className="text-[9px] font-bold uppercase text-slate-700 mb-1">Consolidado por Técnico en el Período</h3>
+                    <table className="w-full text-left border-collapse border border-slate-800 table-fixed">
+                        <thead>
+                            <tr className="bg-slate-200 border-b border-slate-800 text-slate-900 font-bold uppercase text-[9px]">
+                                <th className="p-1 border border-slate-800 w-[34%]">Técnico</th>
+                                <th className="p-1 border border-slate-800 text-center w-[12%]">Servicios</th>
+                                <th className="p-1 border border-slate-800 text-right w-[18%]">Total a Pagar</th>
+                                <th className="p-1 border border-slate-800 text-right w-[18%]">Total Fiscal</th>
+                                <th className="p-1 border border-slate-800 text-right w-[18%]">Total No Fiscal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {resumen.map((t, idx) => (
+                                <tr key={t.nombre} className={`border-b border-slate-400 text-[9.5px] ${idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}`}>
+                                    <td className="p-1 border border-slate-800 font-medium text-slate-800 truncate">{t.nombre}</td>
+                                    <td className="p-1 border border-slate-800 text-center font-mono text-slate-700">{t.servicios}</td>
+                                    <td className="p-1 border border-slate-800 text-right font-bold font-mono text-slate-900">${t.totalCobrado.toFixed(2)}</td>
+                                    <td className="p-1 border border-slate-800 text-right font-mono text-emerald-700">${(t.totalFiscal || 0).toFixed(2)}</td>
+                                    <td className="p-1 border border-slate-800 text-right font-mono text-slate-600">${(t.totalNoFiscal || 0).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const ReportesPage = () => {
     const contentRef = useRef(null);
@@ -239,6 +278,7 @@ const ReportesPage = () => {
         serial: r.nro_serial || '-',
         fechaIngreso: r.fecha_ingreso ? r.fecha_ingreso.slice(0, 10) : '',
         numeroFactura: r.numero_factura ?? '',
+        facturaFiscal: r.factura_fiscal === true,
         montoTotal: Number(r.monto_cobro) || 0,
         estado: r.estado,
     }));
@@ -371,6 +411,22 @@ const ReportesPage = () => {
         return filteredLiquidaciones.reduce((acc, curr) => acc + curr.montoTotal, 0);
     }, [filteredLiquidaciones]);
 
+    const totalesPorTipoFactura = useMemo(() => {
+        return filteredLiquidaciones.reduce(
+            (acc, curr) => {
+                if (curr.facturaFiscal) {
+                    acc.fiscal += curr.montoTotal;
+                    acc.fiscalCount += 1;
+                } else {
+                    acc.noFiscal += curr.montoTotal;
+                    acc.noFiscalCount += 1;
+                }
+                return acc;
+            },
+            { fiscal: 0, fiscalCount: 0, noFiscal: 0, noFiscalCount: 0 }
+        );
+    }, [filteredLiquidaciones]);
+
     const ticketPromedio = useMemo(() => {
         return filteredLiquidaciones.length > 0
             ? (totalFacturado / filteredLiquidaciones.length).toFixed(2)
@@ -381,10 +437,15 @@ const ReportesPage = () => {
         const map = {};
         filteredLiquidaciones.forEach((item) => {
             if (!map[item.tecnico]) {
-                map[item.tecnico] = { nombre: item.tecnico, servicios: 0, totalCobrado: 0 };
+                map[item.tecnico] = { nombre: item.tecnico, servicios: 0, totalCobrado: 0, totalFiscal: 0, totalNoFiscal: 0 };
             }
             map[item.tecnico].servicios += 1;
             map[item.tecnico].totalCobrado += item.montoTotal;
+            if (item.facturaFiscal) {
+                map[item.tecnico].totalFiscal += item.montoTotal;
+            } else {
+                map[item.tecnico].totalNoFiscal += item.montoTotal;
+            }
         });
         return Object.values(map);
     }, [filteredLiquidaciones]);
@@ -421,6 +482,21 @@ const ReportesPage = () => {
             render: (row) => (
                 <span className={row.numeroFactura ? 'font-mono' : 'text-slate-400'}>
                     {row.numeroFactura || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'facturaFiscal',
+            label: 'Tipo Factura',
+            className: 'text-center',
+            render: (row) => (
+                <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${row.facturaFiscal
+                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                        }`}
+                >
+                    {row.facturaFiscal ? 'Fiscal' : 'No Fiscal'}
                 </span>
             ),
         },
@@ -528,6 +604,25 @@ const ReportesPage = () => {
                         </div>
                     )}
 
+                    {!loading && !error && totalFacturado > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase text-emerald-700">Facturas Fiscales ({totalesPorTipoFactura.fiscalCount})</p>
+                                    <p className="font-mono font-bold text-emerald-800 text-sm">${totalesPorTipoFactura.fiscal.toFixed(2)}</p>
+                                </div>
+                                <FileText size={18} className="text-emerald-500" />
+                            </div>
+                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase text-slate-600">Facturas No Fiscales ({totalesPorTipoFactura.noFiscalCount})</p>
+                                    <p className="font-mono font-bold text-slate-700 text-sm">${totalesPorTipoFactura.noFiscal.toFixed(2)}</p>
+                                </div>
+                                <FileText size={18} className="text-slate-400" />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
                             <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
@@ -558,6 +653,10 @@ const ReportesPage = () => {
                                         <span className="text-slate-400 text-[10px]">Cobrado:</span>
                                         <span className="font-bold text-slate-800">${tec.totalCobrado.toFixed(2)}</span>
                                     </div>
+                                    <div className="mt-1 flex justify-between items-center text-[10px]">
+                                        <span className="text-emerald-600">Fiscal: ${tec.totalFiscal.toFixed(2)}</span>
+                                        <span className="text-slate-400">No fiscal: ${tec.totalNoFiscal.toFixed(2)}</span>
+                                    </div>
                                 </Card>
                             ))}
                         </div>
@@ -569,7 +668,7 @@ const ReportesPage = () => {
                                 <div>
                                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                                         <FileText size={16} className="text-[#97C719]" />
-                                        Detalle de Servicios para Liquidación
+                                        Detalle de Servicios para Pagos
                                     </h3>
                                     <p className="text-[11px] text-slate-500">
                                         {startDate || endDate ? (

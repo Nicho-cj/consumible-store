@@ -61,11 +61,13 @@ export async function responderCotizacion(id, aprobada) {
     }));
 }
 
-// PATCH /ordenes/:id/factura { numero_factura } -> RF-10 (solo entregadas)
-export async function registrarFactura(id, numero_factura) {
+// PATCH /ordenes/:id/factura { numero_factura, factura_fiscal? } -> RF-10 (solo entregadas)
+export async function registrarFactura(id, { numero_factura, factura_fiscal }) {
+    const body = { numero_factura };
+    if (factura_fiscal !== undefined) body.factura_fiscal = factura_fiscal;
     return normalizeOrden(await apiFetch(`/ordenes/${id}/factura`, {
         method: 'PATCH',
-        body: { numero_factura },
+        body,
     }));
 }
 
