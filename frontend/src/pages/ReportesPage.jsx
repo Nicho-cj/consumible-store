@@ -102,7 +102,7 @@ const ReportContent = ({
                     <strong className="text-slate-900 truncate block">{selectedTechnician === 'ALL' ? 'Todos los Técnicos' : selectedTechnician}</strong>
                 </div>
                 <div>
-                    <span className="text-slate-500 block text-[9px]">Rango de Fecha Ingreso:</span>
+                    <span className="text-slate-500 block text-[9px]">Rango de Fecha (Listo para Entregar):</span>
                     <strong className="text-slate-900">{startDate ? formatDate(startDate) : 'Inicio'} al {endDate ? formatDate(endDate) : 'Presente'}</strong>
                 </div>
                 <div>
@@ -268,6 +268,19 @@ const ReportesPage = () => {
             .finally(() => setLoading(false));
     };
 
+    // Fecha en que cada orden pasó a LISTO_ENTREGA (pago del técnico), derivada del log de auditoría.
+    const fechaListoEntregaByCodigo = useMemo(() => {
+        const map = {};
+        logs.forEach((log) => {
+            if (log.accion !== 'Cambio de Estatus' || !log.detalles) return;
+            const match = log.detalles.match(/Orden ([^\s"]+) pasó de ".*" a "LISTO_ENTREGA"/);
+            if (!match) return;
+            const fecha = log.fecha_creacion ? log.fecha_creacion.slice(0, 10) : '';
+            if (fecha && !map[match[1]]) map[match[1]] = fecha;
+        });
+        return map;
+    }, [logs]);
+
     const liquidaciones = reportes.map((r) => ({
         id: r.id_orden,
         codigo: r.codigo_orden,
@@ -277,6 +290,7 @@ const ReportesPage = () => {
         equipo: [r.marca, r.modelo].filter(Boolean).join(' ') || '-',
         serial: r.nro_serial || '-',
         fechaIngreso: r.fecha_ingreso ? r.fecha_ingreso.slice(0, 10) : '',
+        fechaListoEntrega: fechaListoEntregaByCodigo[r.codigo_orden] || '',
         numeroFactura: r.numero_factura ?? '',
         facturaFiscal: r.factura_fiscal === true,
         montoTotal: Number(r.monto_cobro) || 0,
@@ -297,14 +311,14 @@ const ReportesPage = () => {
         },
         {
             id: 'startDate',
-            label: 'Fecha Ingreso Desde',
+            label: 'Fecha Desde',
             type: 'date',
             value: startDate,
             onChange: setStartDate,
         },
         {
             id: 'endDate',
-            label: 'Fecha Ingreso Hasta',
+            label: 'Fecha Hasta',
             type: 'date',
             value: endDate,
             onChange: setEndDate,
@@ -363,8 +377,10 @@ const ReportesPage = () => {
         return liquidaciones.filter((item) => {
             const matchesTecnico = selectedTechnician === 'ALL' || String(item.tecnicoId) === selectedTechnician;
 
-            const matchesStart = !startDate || item.fechaIngreso >= startDate;
-            const matchesEnd = !endDate || item.fechaIngreso <= endDate;
+            // Fecha de pago: cuando pasó a "Listo para Entregar" (log de auditoría) o, si no hay registro, la de ingreso.
+            const fechaPago = item.fechaListoEntrega || item.fechaIngreso;
+            const matchesStart = !startDate || fechaPago >= startDate;
+            const matchesEnd = !endDate || fechaPago <= endDate;
 
             const query = normalizeText(searchQuery);
             const matchesSearch = !query ||
@@ -558,7 +574,7 @@ const ReportesPage = () => {
                         <FileSpreadsheet className="text-[#97C719]" size={24} />
                         Pagos y Reportes de Servicios
                     </h2>
-                    <p className="text-xs text-slate-500 mt-1">Reporte de servicios finalizados por fecha de ingreso para liquidación y respaldo operativo</p>
+                    <p className="text-xs text-slate-500 mt-1">Reporte de servicios finalizados por fecha en que pasaron a Listo para Entregar, para liquidación y respaldo operativo</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -672,7 +688,7 @@ const ReportesPage = () => {
                                     </h3>
                                     <p className="text-[11px] text-slate-500">
                                         {startDate || endDate ? (
-                                            <span>Filtrando por fecha de ingreso: <strong>{startDate ? formatDate(startDate) : 'Inicio'}</strong> hasta <strong>{endDate ? formatDate(endDate) : 'Fin'}</strong></span>
+                                            <span>Filtrando por fecha en que pasó a Listo para Entregar: <strong>{startDate ? formatDate(startDate) : 'Inicio'}</strong> hasta <strong>{endDate ? formatDate(endDate) : 'Fin'}</strong></span>
                                         ) : (
                                             'Mostrando todos los servicios finalizados registrados'
                                         )}

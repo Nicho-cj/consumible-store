@@ -58,6 +58,15 @@ vi.mock('../api/reportes', () => ({
                 accion: 'Cambio de estatus',
                 detalles: 'ORD-2026-001',
             },
+            {
+                id_log: 3,
+                fecha_creacion: '2026-09-28T10:00:00.000Z',
+                usuario_nombre: 'Pedro Martínez',
+                rol: 'TECNICO',
+                modulo: 'Órdenes',
+                accion: 'Cambio de Estatus',
+                detalles: 'Orden ORD-2026-001 pasó de "PROCESO_TECNICO" a "LISTO_ENTREGA"',
+            },
         ])
     ),
     descargarBackup: vi.fn(() => Promise.resolve('-- PostgreSQL database dump')),
@@ -93,6 +102,30 @@ describe('Página ReportesPage - Detalle de Servicios para Liquidación', () => 
         // Verificar que NO exista columna de comisión de técnico por ahora
         expect(screen.queryByText('Comisión Técnico')).not.toBeInTheDocument();
         expect(screen.queryByText('Comisiones por Liquidar')).not.toBeInTheDocument();
+    });
+
+    it('filtra por la fecha en que la orden pasó a LISTO_ENTREGA (pago) y no solo por ingreso', async () => {
+        const { container } = render(<ReportesPage />);
+
+        await screen.findByText('Pagos y Reportes de Servicios');
+
+        const [startInput, endInput] = container.querySelectorAll('input[type="date"]');
+
+        // ORD-2026-001: ingresa el 09-01, pasó a LISTO_ENTREGA el 09-28 → debe aparecer en la semana 26-30
+        fireEvent.change(startInput, { target: { value: '2026-09-26' } });
+        fireEvent.change(endInput, { target: { value: '2026-09-30' } });
+
+        expect(screen.getAllByText('ORD-2026-001').length).toBeGreaterThan(0);
+
+        // ORD-2026-002: sin evento LISTO_ENTREGA → fecha efectiva de pago = ingreso (09-02), fuera del rango
+        expect(screen.queryByText('ORD-2026-002')).not.toBeInTheDocument();
+
+        // Al filtrar la semana del ingreso de la ORD-2026-002 (01-05), sí aparece y la 001 ya no
+        fireEvent.change(startInput, { target: { value: '2026-09-01' } });
+        fireEvent.change(endInput, { target: { value: '2026-09-05' } });
+
+        expect(screen.getAllByText('ORD-2026-002').length).toBeGreaterThan(0);
+        expect(screen.queryByText('ORD-2026-001')).not.toBeInTheDocument();
     });
 
     it('abre el modal de Vista Previa al hacer clic en Vista Previa', async () => {
