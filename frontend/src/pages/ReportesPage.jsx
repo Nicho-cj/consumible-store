@@ -275,7 +275,7 @@ const ReportesPage = () => {
             if (log.accion !== 'Cambio de Estatus' || !log.detalles) return;
             const match = log.detalles.match(/Orden ([^\s"]+) pasó de ".*" a "LISTO_ENTREGA"/);
             if (!match) return;
-            const fecha = log.fecha_creacion ? log.fecha_creacion.slice(0, 10) : '';
+            const fecha = log.fecha ? log.fecha.slice(0, 10) : '';
             if (fecha && !map[match[1]]) map[match[1]] = fecha;
         });
         return map;
@@ -398,8 +398,8 @@ const ReportesPage = () => {
     const logsView = useMemo(() => {
         return logs.map((log) => ({
             id: `LOG-${log.id_log}`,
-            fecha: log.fecha_creacion
-                ? new Date(log.fecha_creacion).toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            fecha: log.fecha
+                ? new Date(log.fecha).toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                 : '-',
             usuario: log.usuario_nombre || log.rol || 'Sistema',
             modulo: log.modulo,

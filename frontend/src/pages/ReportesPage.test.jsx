@@ -42,7 +42,7 @@ vi.mock('../api/reportes', () => ({
         Promise.resolve([
             {
                 id_log: 1,
-                fecha_creacion: '2026-09-09T15:30:00.000Z',
+                fecha: '2026-09-09T15:30:00.000Z',
                 usuario_nombre: 'jesus',
                 rol: 'ADMIN_RECEPCION',
                 modulo: 'Seguridad / Sistema',
@@ -51,7 +51,7 @@ vi.mock('../api/reportes', () => ({
             },
             {
                 id_log: 2,
-                fecha_creacion: '2026-09-09T15:31:00.000Z',
+                fecha: '2026-09-09T15:31:00.000Z',
                 usuario_nombre: 'Pedro Martínez',
                 rol: 'TECNICO',
                 modulo: 'Órdenes',
@@ -60,7 +60,7 @@ vi.mock('../api/reportes', () => ({
             },
             {
                 id_log: 3,
-                fecha_creacion: '2026-09-28T10:00:00.000Z',
+                fecha: '2026-09-28T10:00:00.000Z',
                 usuario_nombre: 'Pedro Martínez',
                 rol: 'TECNICO',
                 modulo: 'Órdenes',
