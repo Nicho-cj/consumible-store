@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeText, sanitizeForApi, sanitizePayload, sanitizeDocumentNumber } from './text';
+import { normalizeText, sanitizeForApi, sanitizePayload, sanitizeDocumentNumber, toUppercase } from './text';
 
 describe('Utilidades de Texto (text.js)', () => {
     describe('normalizeText', () => {
@@ -59,6 +59,20 @@ describe('Utilidades de Texto (text.js)', () => {
             expect(sanitizeDocumentNumber(null)).toBe('');
             expect(sanitizeDocumentNumber(undefined)).toBe('');
             expect(sanitizeDocumentNumber(12345678)).toBe('');
+        });
+    });
+
+    describe('toUppercase', () => {
+        it('convierte a mayúsculas sin alterar otros caracteres', () => {
+            expect(toUppercase('Jesús A. Pérez')).toBe('JESÚS A. PÉREZ');
+            expect(toUppercase('impresion-l3110')).toBe('IMPRESION-L3110');
+            expect(toUppercase('  datos  ')).toBe('  DATOS  ');
+        });
+
+        it('maneja valores no string de forma segura', () => {
+            expect(toUppercase(null)).toBe('');
+            expect(toUppercase(undefined)).toBe('');
+            expect(toUppercase(123)).toBe('');
         });
     });
 });

@@ -4,6 +4,7 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import StatusBadge from '../common/StatusBadge';
 import { getClienteOrdenes, getClienteEquipos } from '../../api/entidades';
+import { toUppercase } from '../../utils/text';
 
 const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
     const [activeTab, setActiveTab] = useState('ordenes');
@@ -42,21 +43,21 @@ const ClienteDetalleModal = ({ isOpen, onClose, customer }) => {
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`Detalle del Cliente - ${customer.nombre}`}
+            title={`Detalle del Cliente - ${toUppercase(customer.nombre)}`}
         >
             <div className="space-y-4">
                 <div className="p-3 bg-slate-50 border border-[#E2E8F0] rounded-lg flex flex-wrap justify-between gap-2 text-xs">
                     <div>
                         <span className="text-slate-400 block font-medium">Documento</span>
-                        <span className="font-semibold text-slate-700">{customer.cedulaRif || 'N/A'}</span>
+                        <span className="font-semibold text-slate-700">{toUppercase(customer.cedulaRif || 'N/A')}</span>
                     </div>
                     <div>
                         <span className="text-slate-400 block font-medium">Teléfono</span>
-                        <span className="font-semibold text-slate-700">{customer.telefono || 'N/A'}</span>
+                        <span className="font-semibold text-slate-700">{toUppercase(customer.telefono || 'N/A')}</span>
                     </div>
                     <div>
                         <span className="text-slate-400 block font-medium">Dirección</span>
-                        <span className="font-semibold text-slate-700">{customer.direccion || 'N/A'}</span>
+                        <span className="font-semibold text-slate-700">{toUppercase(customer.direccion || 'N/A')}</span>
                     </div>
                 </div>
 

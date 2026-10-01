@@ -1,5 +1,6 @@
 import { Phone, FileText, CreditCard } from 'lucide-react';
 import Card from './Card';
+import { toUppercase } from '../../utils/text';
 
 const CustomerCard = ({ customer = {}, onClick }) => {
     const {
@@ -36,7 +37,7 @@ const CustomerCard = ({ customer = {}, onClick }) => {
                 {/* Nombre del Cliente / Empresa */}
                 <div>
                     <h3 className="font-bold text-slate-800 text-base leading-snug truncate">
-                        {nombre}
+                        {toUppercase(nombre)}
                     </h3>
                 </div>
 
@@ -45,14 +46,14 @@ const CustomerCard = ({ customer = {}, onClick }) => {
                     {docIdentidad && (
                         <div className="flex items-center gap-2.5">
                             <CreditCard size={14} className="text-slate-400 shrink-0" />
-                            <span className="font-mono">{docIdentidad}</span>
+                            <span className="font-mono">{toUppercase(docIdentidad)}</span>
                         </div>
                     )}
 
                     {telefono && (
                         <div className="flex items-center gap-2.5">
                             <Phone size={14} className="text-slate-400 shrink-0" />
-                            <span className="font-mono">{telefono}</span>
+                            <span className="font-mono">{toUppercase(telefono)}</span>
                         </div>
                     )}
                 </div>

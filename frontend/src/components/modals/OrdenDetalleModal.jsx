@@ -6,6 +6,7 @@ import StatusBadge from '../common/StatusBadge';
 import { ORDER_STATUS, STATUS_FLOW, STATUS_CONFIG } from '../../utils/status';
 import { cambiarTecnicoOrden, responderCotizacion, patchOrden, listRepuestos, registrarFactura } from '../../api/ordenes';
 import { listTecnicosPublicos } from '../../api/entidades';
+import { toUppercase } from '../../utils/text';
 
 const FlowProgress = ({ currentStatus }) => {
     const currentIdx = STATUS_FLOW.indexOf(currentStatus);
@@ -394,15 +395,15 @@ const OrdenDetalleModal = ({ isOpen, onClose, order, onUpdateOrder, onNotify, cu
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
                         <div>
                             <span className="text-slate-400 block font-medium">Nombre / Razón Social</span>
-                            <span className="font-semibold text-slate-800">{order.clienteNombre || 'Cliente No Registrado'}</span>
+                            <span className="font-semibold text-slate-800">{toUppercase(order.clienteNombre || 'Cliente No Registrado')}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Cédula / RIF</span>
-                            <span className="font-mono text-slate-700">{order.clienteCedulaRif || 'N/A'}</span>
+                            <span className="font-mono text-slate-700">{toUppercase(order.clienteCedulaRif || 'N/A')}</span>
                         </div>
                         <div>
                             <span className="text-slate-400 block font-medium">Teléfono Contacto</span>
-                            <span className="font-mono text-slate-700">{order.clienteTelefono || 'N/A'}</span>
+                            <span className="font-mono text-slate-700">{toUppercase(order.clienteTelefono || 'N/A')}</span>
                         </div>
                     </div>
                 </div>

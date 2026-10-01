@@ -58,3 +58,12 @@ export const sanitizeDocumentNumber = (value = '') => {
         .replace(/[,.\s]/g, '')
         .trim();
 };
+
+/**
+ * Convierte un texto a mayúsculas para su visualización.
+ * No modifica otros caracteres (a diferencia de sanitizeDocumentNumber).
+ */
+export const toUppercase = (value = '') => {
+    if (typeof value !== 'string') return '';
+    return value.toUpperCase();
+};
